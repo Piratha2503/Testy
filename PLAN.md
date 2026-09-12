@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**2 / 16 முடிஞ்சது** · Phase 1 — Foundation
+**3 / 16 முடிஞ்சது** · Phase 1 — Foundation
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -190,7 +190,22 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   - `tests/test_client.py` — 27 tests. மொத்தம் **39 pass**
   - **DONE WHEN ✅** — production host (`api.acme.com`) கொடுத்தா `GuardrailError`, exit code 2. `require_host_substring` காலியா இருந்தாலும் அதே
   - ⚠️ `base_url` இப்போ `http://localhost:8080` placeholder — session 08-ல real staging value `config.local.yaml`-ல வரணும்
-- [ ] 03 Parser real-spec validate — ⏳ அடுத்தது
+- [x] **03** Parser real-spec validate + `main.py list` — *2026-09-12*
+  - Real spec: efly staging (`/efly/v3/api-docs`, OpenAPI **3.1.0**, 72 paths → **104 endpoints**, 136 schemas). `specs/` gitignored
+  - Parser real spec-ல **crash ஆகல, fix எதுவும் வேணாம்** — circular marker 0, truncated marker 0, duplicate key 0, missing operationId 0
+  - `allOf` / `oneOf` / `anyOf` / `discriminator` / `nullable` — spec-ல **ஒன்னும் இல்ல** (springdoc generate பண்ணது). அதனால session 01-ல விட்ட `allOf` merge **எழுதல** — YAGNI. தேவைப்பட்டா அப்போ சேர்க்கலாம்
+  - `main.py` — `list` command, `--spec` / `--method` / `--grep` / `--runnable`, ASCII table (Windows console cp1252-க்காக)
+  - GUARDRAIL column — ஒவ்வொரு endpoint-ஐயும் client guardrails அனுமதிக்குமா (`ok` / `method` / `blocked`). 104-ல **32 மட்டும் callable**
+  - `config.yaml` — `spec_path` key; `booking` / `/sync` / `/purge` blocked patterns சேர்த்தது (கீழ finding 3 பாக்க)
+  - `tests/test_main.py` — 11 tests. மொத்தம் **50 pass**. ரெண்டு தடவ run → byte-identical output
+  - **DONE WHEN ✅** — `python main.py list` 104 endpoints-ஐ method, path, documented codes ஓட print பண்ணுது
+
+  **Findings — sessions 06 / 08 / 10-க்கு:**
+  1. ⚠️ **எல்லா 104 endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு.** 400/401/404 எதுவும் spec-ல இல்ல. Session 06 verdict rule அப்படியே வெச்சா, ஒவ்வொரு 404-ும் `FAIL` ஆகும் — false positive வெள்ளம். Verdict logic-ல "documented codes உபயோகமில்ல" ங்கற case handle பண்ணணும். இது spec-ஓட குறை, tool-ஓட குறை இல்ல — session 10-ல finding ஆ report பண்ணலாம்
+  2. ⚠️ Spec-ல `servers[0].url` — **bare IP + port + `/efly`, `staging` ங்கற substring இல்ல**. Session 08-ல `require_host_substring` ஆ என்ன வைக்கறதுன்னு முடிவு பண்ணணும். இது open question. (Real host `config.local.yaml`-ல மட்டும் — RULE 5)
+  3. ⚠️ **Booking endpoints** (`/booking/book`, `/booking/cancel`, `/package-bookings`) + `/sync` + `/purge` — supplier-க்கு போகலாம் (RULE 2). இப்போ blocked patterns-ல போட்டாச்சு. 12 booking endpoints-ும் block ஆகுது
+  4. `resolve_refs` output 96 KB → 241 KB (2.5x). Session 11-ல `request_schema` LLM-க்கு அனுப்பும்போது token cost-ல தெரியும். அப்போ trim பண்ணணும்
+- [ ] 04 Test case JSON format — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

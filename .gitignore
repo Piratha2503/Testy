@@ -14,3 +14,7 @@ reports/*.csv
 
 # plan source (working copy is PLAN.md)
 api_test_agent_16_session_plan.pdf
+
+# downloaded specs - may contain internal hostnames
+specs/*
+!specs/.gitkeep

@@ -13,6 +13,9 @@
 # Session 08-ல real staging URL config.local.yaml-ல வரும்.
 base_url: "http://localhost:8080"
 
+# `main.py list` / `run` default-ஆ படிக்கற spec. specs/ gitignored.
+spec_path: "specs/openapi.json"
+
 # NON-NEGOTIABLE RULE 1. base_url-ஓட host-ல இந்த substring இல்லைன்னா
 # program GuardrailError-ஓட நிக்கும். காலியா / missing ஆ இருந்தாலும் நிக்கும்.
 require_host_substring: "localhost"
@@ -64,8 +67,11 @@ blocked_host_substrings:
   - googleapis
   - amazonaws
 
-# Staging-ல கூட தொடக்கூடாத paths. Python regex, case-insensitive,
-# resolved path மேல search பண்ணப்படும்.
+# Staging-ல கூட தொடக்கூடாத paths. Python regex, case-insensitive.
+#
+# ⚠️ Check நடக்கறது **resolved** path மேல — `{petId}` எல்லாம் value-ஆ
+# மாறின பிறகு. அதனால pattern-ல `/pets/{petId}` னு எழுதினா வேலை செய்யாது
+# (`/pets/1`-ஓட match ஆகாது). `/pets/` னு எழுதுங்க.
 blocked_path_patterns:
   - "/payment"
   - "/checkout"
@@ -73,3 +79,12 @@ blocked_path_patterns:
   - "/webhook"
   - "/admin"
   - "/internal"
+  # --- session 03, real spec-ஐ படிச்சப்புறம் சேர்த்தது ---
+  # இந்த endpoints backend-ல இருந்து hotel supplier-க்கு போகுதுன்னு
+  # பேரைப் பாத்தா தெரியுது. Staging backend-ஆ இருந்தாலும் supplier real-ஆ
+  # இருக்கலாம் — RULE 2. Real booking / hold போட்டுடக்கூடாது.
+  # `booking` — `/booking/book`, `/package-bookings` ரெண்டையும் பிடிக்கும்.
+  # `/bookings` னு எழுதினா `-bookings` தப்பிச்சுடும்.
+  - "booking"
+  - "/sync"
+  - "/purge"

@@ -26,7 +26,13 @@ venv-ஐ activate பண்ணாம, நேரடியா interpreter path-ஐ
 .venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
 
-Session 03-க்கு அப்புறம் `main.py` வரும் — அப்போ `list` / `run` / `generate` commands இங்க சேர்க்கணும்.
+```bash
+.venv/Scripts/python.exe main.py list --spec specs/efly.json
+.venv/Scripts/python.exe main.py list --method GET --runnable   # guardrails அனுமதிக்கறது மட்டும்
+.venv/Scripts/python.exe main.py list --grep booking
+```
+
+`run` (S07) / `generate` (S13) வரும்போது இங்க சேர்க்கணும்.
 
 ## Layout
 
@@ -36,10 +42,11 @@ core/client.py      HTTP client + guardrails - config load, staging check, metho
 core/executor.py    (S05) testcase replay loop
 core/reporter.py    (S07) CSV output
 core/generator.py   (S11) anthropic SDK — test case generation
-main.py             (S03) CLI entry point
+main.py             CLI entry point - `list` command (S07-ல `run`, S13-ல `generate`)
 testcases/          test case JSON files (S04 கையால, S13 generated)
 reports/            CSV output — git-ல போகாது
 tests/              pytest + fixtures/mini_spec.yaml (dummy petstore spec)
+specs/              downloaded OpenAPI specs - gitignored
 config.yaml         base_url, require_host_substring, auth, timeout, allowed_methods
 config.local.yaml   real secrets — gitignored
 seed_data.yaml      (S09) real path param values — gitignored
@@ -74,8 +81,13 @@ seed_data.yaml      (S09) real path param values — gitignored
 
 ## Current status
 
-**Session 01 ✅** — parser working.
-**Session 02 ✅** — `config.yaml` + `core/client.py` + guardrails. 39 tests passing.
-**அடுத்தது: Session 03** — real spec மேல parser validate + `main.py list` command.
+**Session 01 ✅** parser · **02 ✅** client + guardrails · **03 ✅** real spec validate + `main.py list`. **50 tests passing.**
+**அடுத்தது: Session 04** — test case JSON format + கையால 5 cases.
 
-⚠️ `config.yaml`-ல `base_url: http://localhost:8080`, `require_host_substring: localhost` — ரெண்டும் placeholder. Session 08-ல real staging value `config.local.yaml`-ல போடணும் (git-ல போகாது).
+**Real spec:** efly staging, OpenAPI 3.1, 104 endpoints. `specs/efly.json` (gitignored, `/efly/v3/api-docs`-ல இருந்து download). Guardrails 104-ல 32-ஐ மட்டும் allow பண்ணுது.
+
+**Session 04-ல எந்த endpoint எடுக்கலாம்:** `GET /api/v1/countries` — path param இல்ல, 4 query params (page/size/sortBy/sortDir), guardrail ok.
+
+⚠️ **தீர்க்கப்படாத ரெண்டு விஷயம்:**
+1. Spec-ல எல்லா endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு. Session 06 verdict logic அதை நம்பக்கூடாது — இல்லைன்னா ஒவ்வொரு 404-ும் false `FAIL` ஆகும்.
+2. Staging host bare IP + port — bare IP, `staging` substring இல்ல. `require_host_substring` ஆ என்ன வைக்கறது? Session 08-ல முடிவு பண்ணணும். இப்போ `config.yaml`-ல `localhost` placeholder.
