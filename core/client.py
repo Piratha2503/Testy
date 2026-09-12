@@ -22,7 +22,11 @@ import requests
 import yaml
 
 DEFAULT_CONFIG_PATH = "config.yaml"
-LOCAL_CONFIG_PATH = "config.local.yaml"
+
+# load_config(local_path=...) default: derive the overlay from the config file
+# being loaded, rather than always reaching for the repo's config.local.yaml.
+# Passing an explicit --config must not pick up an unrelated local file.
+DERIVE_LOCAL = object()
 
 # Substituted from os.environ, e.g. "${API_TEST_TOKEN}".
 _ENV_PATTERN = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
@@ -86,14 +90,28 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return raw
 
 
+def local_config_path(path: str | Path) -> Path:
+    """The overlay that belongs to ``path``: config.yaml -> config.local.yaml."""
+    path = Path(path)
+    return path.with_name(f"{path.stem}.local{path.suffix}")
+
+
 def load_config(
     path: str | Path = DEFAULT_CONFIG_PATH,
-    local_path: str | Path | None = LOCAL_CONFIG_PATH,
+    local_path: str | Path | None | Any = DERIVE_LOCAL,
 ) -> dict[str, Any]:
-    """Load config.yaml, merge config.local.yaml over it, expand ``${VAR}``."""
+    """Load a config file, merge its ``.local`` overlay over it, expand ``${VAR}``.
+
+    The overlay is the sibling of ``path``, so ``--config other.yaml`` picks up
+    ``other.local.yaml`` and nothing else. Pass ``local_path=None`` to skip the
+    overlay entirely, or an explicit path to point somewhere else.
+    """
     path = Path(path)
     if not path.is_file():
         raise ConfigError(f"Config file not found: {path}")
+
+    if local_path is DERIVE_LOCAL:
+        local_path = local_config_path(path)
 
     config = _read_yaml(path)
     if local_path is not None:

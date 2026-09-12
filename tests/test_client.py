@@ -262,6 +262,33 @@ def test_local_config_overrides_and_merges(tmp_path):
     assert config["auth"] == {"type": "bearer", "header_name": "X-API-Key"}
 
 
+def test_overlay_is_derived_from_the_config_being_loaded(tmp_path):
+    """An explicit config must not pick up the repo's own config.local.yaml.
+
+    This bit for real: `main.py --config <tmp>` silently merged the checked-out
+    config.local.yaml over the caller's file, so a deliberately safe config
+    could be overridden by whatever host happened to be on the machine.
+    """
+    (tmp_path / "other.yaml").write_text("base_url: http://safe.local\n", encoding="utf-8")
+    (tmp_path / "other.local.yaml").write_text("timeout: 99\n", encoding="utf-8")
+    # The sibling of a *different* config file must be ignored.
+    (tmp_path / "config.local.yaml").write_text(
+        "base_url: http://should-not-win\n", encoding="utf-8"
+    )
+
+    config = load_config(tmp_path / "other.yaml")
+    assert config["base_url"] == "http://safe.local"
+    assert config["timeout"] == 99
+
+
+def test_overlay_can_be_skipped(tmp_path):
+    (tmp_path / "config.yaml").write_text("timeout: 1\n", encoding="utf-8")
+    (tmp_path / "config.local.yaml").write_text("timeout: 2\n", encoding="utf-8")
+
+    assert load_config(tmp_path / "config.yaml")["timeout"] == 2
+    assert load_config(tmp_path / "config.yaml", None)["timeout"] == 1
+
+
 def test_env_var_placeholder_is_expanded(tmp_path, monkeypatch):
     monkeypatch.setenv("API_TEST_TOKEN", "secret-from-env")
     (tmp_path / "config.yaml").write_text(
