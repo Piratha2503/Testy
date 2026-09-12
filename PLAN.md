@@ -173,8 +173,16 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-- [x] **01** Project setup + Swagger parser
-- [ ] 02 API client + Guardrails
+**1 / 16 முடிஞ்சது** · Phase 1 — Foundation
+
+- [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
+  - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
+  - `core/swagger.py` — YAML/JSON load, local `$ref` resolve, circular ref guard (`$circular_ref` marker), `MAX_REF_DEPTH=40` cap, `Endpoint` dataclass
+  - Path-level + operation-level parameters merge; `application/json` request body எடுக்குது; `default` / `4XX` மாதிரி non-numeric response codes drop ஆகுது
+  - `tests/test_swagger.py` — 12 tests pass, `tests/fixtures/mini_spec.yaml`-ல Pet ↔ Category circular ref
+  - **DONE WHEN ✅** — `parse_file()` spec-ஐ படிச்சு 3 `Endpoint` objects return பண்ணுது
+  - ⚠️ பாக்கி: `allOf` merge இன்னும் இல்ல — session 03-ல real spec மேல பாக்கும்போது சேர்க்கணும்
+- [ ] 02 API client + Guardrails — ⏳ அடுத்தது
 - [ ] 03 Parser real-spec validate
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
