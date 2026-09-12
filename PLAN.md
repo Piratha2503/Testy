@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**3 / 16 முடிஞ்சது** · Phase 1 — Foundation
+**4 / 16 முடிஞ்சது** · Phase 1 — Foundation ✅ முடிஞ்சது · அடுத்து Phase 2
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -227,7 +227,32 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
   **B. Not-found resource-க்கு HTTP 500 வருது** (`/website-slots/99999999`). Body-ல `"validation_Code": "404"` னு சரியாவே இருக்கு, ஆனா HTTP status 500. Unhandled exception → generic 500 handler. **இது backend bug**, tool-ஓட குறை இல்ல. PLAN-ஓட "5xx எப்பவுமே FAIL" rule இதை சரியா பிடிக்கும்
   > DEFINITION OF DONE-ல இருக்கற *"குறைஞ்சது ஒரு real bug கண்டுபிடிச்சிருக்கும்"* — LLM வரதுக்கு முன்னாடியே, session 03-லயே கிடைச்சுடுச்சு
-- [ ] 04 Test case JSON format — ⏳ அடுத்தது
+- [x] **04** Test case JSON format + கையால 5 cases — *2026-09-12*
+  - `core/testcase.py` — `TestCase` dataclass, `TestCaseError`, `parse_document()`, `load_file()`, `load_dir()`, `slug_for()`
+  - Format: ஒரு endpoint = ஒரு file. Top-level-ல `endpoint {method, path}` + `cases[]`. Case-ல `name`, `category`, `expected_status`, `reason` (required) + `path_params`, `query`, `body` (optional)
+  - `CATEGORIES` = `happy_path`, `boundary`, `invalid_input`, `not_found`, `auth` — சின்ன list-ஆ வெச்சிருக்கு; category report-ல group பண்றதுக்கு, author-ஓட எண்ணத்தை விவரிக்க இல்ல
+  - **Unknown key reject ஆகும், ignore ஆகாது.** Session 11-ல LLM ஒரு field கண்டுபிடிச்சா அது சத்தமா fail ஆகணும், அமைதியா drop ஆகக்கூடாது
+  - `path_params` vs path-ல இருக்கற `{...}` cross-check — ரெண்டு பக்கமும் (விடுபட்டா, அதிகமா இருந்தா)
+  - `expected_status` int 100–599; `True` (Python-ல bool ஒரு int) reject ஆகும்
+  - `slug_for()` pure function — session 13-ல rerun பண்ணா overwrite ஆகணும், சேரக்கூடாது
+  - `testcases/get_api-v1-website-slots.json` — கையால 5 cases
+  - `tests/test_testcase.py` — 34 tests. மொத்தம் **86 pass**
+  - **DONE WHEN ✅** — LLM பண்ணக்கூடிய 12 தவறுகளை வெச்சு சோதிச்சேன் (field rename, invented field, status-ஆ string, status-ஆ `40000`, made-up category, empty reason, query-ஆ list, path param தவறு, `cases`-ஆ object, duplicate name, endpoint block இல்ல): **12/12 reject**
+
+  **இந்த 5 cases-ஐ real API மேல ஓட்டினா (session 05/06 preview):**
+
+  | case | want | got | verdict |
+  |---|---|---|---|
+  | default listing | 200 | 200 | PASS |
+  | page size at documented maximum (100) | 200 | 200 | PASS |
+  | page size one above maximum (101) | 400 | **200** | **FAIL** |
+  | sortBy column that does not exist | 400 | **200** | **FAIL** |
+  | order direction that is not asc or desc | 400 | **200** | **FAIL** |
+
+  மூணு FAIL-ும் **சரியான FAIL** — API 4xx கொடுக்கணும், 200 கொடுக்குது
+
+  **Finding C (புதுசு):** `order=sideways` கொடுத்தா API எந்த complaint-ும் பண்ணல, `validation_Code: 200 SUCCESS` னு normal result திருப்பி அனுப்புது. `sortBy`-ஐ validate பண்றாங்க, `order`-ஐ பண்ணவே இல்ல — அமைதியா ignore. இது A-ஐ விட மோசம்: A-ல குறைஞ்சது body-ல error இருக்கு
+- [ ] 05 Executor — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

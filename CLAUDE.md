@@ -39,6 +39,7 @@ venv-ஐ activate பண்ணாம, நேரடியா interpreter path-ஐ
 ```
 core/swagger.py     OpenAPI 3 parser — $ref resolve, circular guard, Endpoint dataclass
 core/client.py      HTTP client + guardrails - config load, staging check, method allowlist
+core/testcase.py    test case file format - TestCase dataclass, strict validation
 core/executor.py    (S05) testcase replay loop
 core/reporter.py    (S07) CSV output
 core/generator.py   (S11) anthropic SDK — test case generation
@@ -82,8 +83,8 @@ seed_data.yaml      (S09) real path param values — gitignored
 
 ## Current status
 
-**Session 01 ✅** parser · **02 ✅** client + guardrails · **03 ✅** real spec validate + `main.py list`. **50 tests passing.**
-**அடுத்தது: Session 04** — test case JSON format + கையால 5 cases.
+**Phase 1 ✅ முடிஞ்சது** — 01 parser · 02 client + guardrails · 03 real spec + `main.py list` · 04 test case format. **86 tests passing.**
+**அடுத்தது: Session 05** — `core/executor.py`, replay loop.
 
 **Real spec:** efly staging, OpenAPI 3.1, 104 endpoints. `specs/efly.json` (gitignored, `/efly/v3/api-docs`-ல இருந்து download). Guardrails 104-ல 32-ஐ மட்டும் allow பண்ணுது.
 

@@ -1,0 +1,55 @@
+{
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/website-slots"
+  },
+  "cases": [
+    {
+      "name": "default listing",
+      "category": "happy_path",
+      "query": {},
+      "expected_status": 200,
+      "reason": "No parameters at all is a valid request for a list endpoint; it should return the first page with server defaults."
+    },
+    {
+      "name": "page size at documented maximum",
+      "category": "boundary",
+      "query": {
+        "page": 0,
+        "size": 100,
+        "sortBy": "title",
+        "order": "asc"
+      },
+      "expected_status": 200,
+      "reason": "The API's own error message says size must be between 1 and 100, so 100 is the last accepted value and must succeed."
+    },
+    {
+      "name": "page size one above maximum",
+      "category": "invalid_input",
+      "query": {
+        "size": 101
+      },
+      "expected_status": 400,
+      "reason": "One past the documented maximum. A rejected request must say so with 4xx; the client cannot act on a refusal disguised as success."
+    },
+    {
+      "name": "sortBy column that does not exist",
+      "category": "invalid_input",
+      "query": {
+        "sortBy": "nonexistent_column"
+      },
+      "expected_status": 400,
+      "reason": "The caller sent a column the API does not support. That is a malformed request, which is what 400 is for."
+    },
+    {
+      "name": "order direction that is not asc or desc",
+      "category": "invalid_input",
+      "query": {
+        "sortBy": "title",
+        "order": "sideways"
+      },
+      "expected_status": 400,
+      "reason": "order only has two meaningful values. Anything else is unparseable input and must be rejected rather than quietly ignored."
+    }
+  ]
+}
