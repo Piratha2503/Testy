@@ -1,13 +1,18 @@
 """CLI entry point.
 
-Session 03 scope: one command, ``list``, which parses a spec and prints the
-endpoints it found. It also says, per endpoint, whether the guardrails in
-core.client would let that endpoint be called at all -- that is the column
-that matters when picking targets for the first real run.
+Two commands so far.
+
+``list`` parses a spec and prints the endpoints it found, saying per endpoint
+whether the guardrails in core.client would let it be called at all -- that is
+the column that matters when picking targets for a real run.
+
+``health`` calls one cheap endpoint and exits non-zero if the API is not up,
+so a suite is never run against a dead host.
 
     python main.py list
     python main.py list --method GET --runnable
     python main.py list --grep booking
+    python main.py health
 
 ``run`` and ``generate`` arrive in sessions 07 and 13.
 """
@@ -145,6 +150,27 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_health(args: argparse.Namespace) -> int:
+    """Is the configured API up? Exit 0 yes, 3 no, 0 (with a note) if skipped.
+
+    Session 05's executor calls the same check before a run. Having it as a
+    command too means you can answer "is staging up?" without starting one.
+    """
+    config = load_config(args.config) if args.config else load_config()
+    client = ApiClient(config)
+
+    result = client.health_check()
+    if result.skipped:
+        print(f"SKIPPED  {result.reason}")
+        print("Set health_check.path in your config to enable the pre-run check.")
+        return 0
+
+    print(f"{'HEALTHY' if result.ok else 'UNHEALTHY'}  {client.host}  {result.reason}")
+    if not result.ok and result.response is not None and result.response.body:
+        print(f"  body: {result.response.body[:200]}")
+    return 0 if result.ok else 3
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="main.py", description="Swagger-driven API test agent (staging only)."
@@ -162,6 +188,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--runnable", action="store_true", help="only endpoints the guardrails allow"
     )
     lister.set_defaults(func=cmd_list)
+
+    health = sub.add_parser("health", help="check the API is up before running a suite")
+    health.set_defaults(func=cmd_health)
     return parser
 
 

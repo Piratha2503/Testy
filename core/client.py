@@ -148,6 +148,20 @@ class Response:
         return self.status is not None and 200 <= self.status < 300
 
 
+@dataclass
+class HealthResult:
+    """Is the API worth running a suite against at all?
+
+    Answered before the run, not after: 60 cases against a dead host produce
+    60 failures that say nothing about the API, and cost ten minutes to read.
+    """
+
+    ok: bool
+    reason: str
+    skipped: bool = False
+    response: Response | None = None
+
+
 # --------------------------------------------------------------------------
 # client
 # --------------------------------------------------------------------------
@@ -345,6 +359,50 @@ class ApiClient:
             body=text[: self.max_response_chars],
             truncated=truncated,
             headers=dict(raw.headers),
+        )
+
+    # -- health -----------------------------------------------------------
+
+    def health_check(self) -> HealthResult:
+        """Call one cheap endpoint to decide whether a run should start.
+
+        Healthy means a response came back with a status below 400. A 404 or
+        401 here is treated as unhealthy on purpose: the configured path is
+        one you know returns 200, so anything else means the path is wrong,
+        auth is broken, or the service is not the one you think it is -- all
+        reasons to stop before running a suite.
+
+        Guardrail failures are not caught. A health path the guardrails refuse
+        is a config mistake, and it must be as loud as any other.
+        """
+        settings = self.config.get("health_check") or {}
+        if not isinstance(settings, dict):
+            raise ConfigError("health_check must be a mapping with a 'path' key")
+
+        path = settings.get("path")
+        if not path:
+            return HealthResult(
+                ok=True, skipped=True, reason="no health_check.path configured"
+            )
+
+        query = settings.get("query") or None
+        response = self.request("GET", str(path), query=query)
+
+        if response.status is None:
+            return HealthResult(
+                ok=False, reason=f"no response from {self.host}: {response.error}",
+                response=response,
+            )
+        if response.status >= 400:
+            return HealthResult(
+                ok=False,
+                reason=f"{path} returned {response.status}, expected below 400",
+                response=response,
+            )
+        return HealthResult(
+            ok=True,
+            reason=f"{path} returned {response.status} in {response.elapsed_ms}ms",
+            response=response,
         )
 
     def close(self) -> None:

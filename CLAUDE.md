@@ -30,6 +30,7 @@ venv-ஐ activate பண்ணாம, நேரடியா interpreter path-ஐ
 .venv/Scripts/python.exe main.py list --spec specs/efly.json
 .venv/Scripts/python.exe main.py list --method GET --runnable   # guardrails அனுமதிக்கறது மட்டும்
 .venv/Scripts/python.exe main.py list --grep booking
+.venv/Scripts/python.exe main.py health                 # API உயிரோட இருக்கா? exit 0=ஆம் 3=இல்ல
 ```
 
 `run` (S07) / `generate` (S13) வரும்போது இங்க சேர்க்கணும்.
@@ -43,7 +44,7 @@ core/testcase.py    test case file format - TestCase dataclass, strict validatio
 core/executor.py    (S05) testcase replay loop
 core/reporter.py    (S07) CSV output
 core/generator.py   (S11) anthropic SDK — test case generation
-main.py             CLI entry point - `list` command (S07-ல `run`, S13-ல `generate`)
+main.py             CLI entry point - `list`, `health` (S07-ல `run`, S13-ல `generate`)
 testcases/          test case JSON files (S04 கையால, S13 generated)
 reports/            CSV output — git-ல போகாது
 tests/              pytest + fixtures/mini_spec.yaml (dummy petstore spec)
@@ -83,12 +84,12 @@ seed_data.yaml      (S09) real path param values — gitignored
 
 ## Current status
 
-**Phase 1 ✅ முடிஞ்சது** — 01 parser · 02 client + guardrails · 03 real spec + `main.py list` · 04 test case format. **86 tests passing.**
+**Phase 1 ✅ முடிஞ்சது** — 01 parser · 02 client + guardrails · 03 real spec + `main.py list` · 04 test case format. **105 tests passing.**
 **அடுத்தது: Session 05** — `core/executor.py`, replay loop.
 
 **Real spec:** efly staging, OpenAPI 3.1, 104 endpoints. `specs/efly.json` (gitignored, `/efly/v3/api-docs`-ல இருந்து download). Guardrails 104-ல 32-ஐ மட்டும் allow பண்ணுது.
 
-**Session 04-ல எந்த endpoint எடுக்கலாம்:** `GET /api/v1/countries` — path param இல்ல, 4 query params (page/size/sortBy/sortDir), guardrail ok.
+**Health check:** `config.local.yaml`-ல `health_check.path` = `/api/v1/website-slots` (size=1). 400-க்கு மேல எது வந்தாலும் unhealthy. Session 05-ல executor இதை run-க்கு முன்னாடி கூப்பிடணும்.
 
 ⚠️ **தீர்க்கப்படாத ரெண்டு விஷயம்:**
 1. Spec-ல எல்லா endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு — அதனால `documented_codes` verdict-ல எந்த signal-ும் கொடுக்காது, `NEEDS_REVIEW` எந்த case-லும் வராது.

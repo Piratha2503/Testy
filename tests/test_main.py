@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 import main
+from core.client import HealthResult
 
 FIXTURE_SPEC = "tests/fixtures/mini_spec.yaml"
 
@@ -94,6 +95,62 @@ def test_runnable_filter_drops_everything_not_ok(config_file, capsys):
 def test_missing_spec_file_exits_1(config_file, capsys):
     assert run_cli(["list", "--spec", "no_such_spec.yaml"], config_file) == 1
     assert "ERROR" in capsys.readouterr().err
+
+
+def health_config(tmp_path, **overrides):
+    config = {
+        "base_url": "https://api.staging.example.com",
+        "require_host_substring": "staging",
+        "spec_path": FIXTURE_SPEC,
+        "allowed_methods": ["GET"],
+    }
+    config.update(overrides)
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    return str(path)
+
+
+def test_health_exits_0_when_up(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(
+        main.ApiClient,
+        "health_check",
+        lambda self: HealthResult(ok=True, reason="/ping returned 200 in 12ms"),
+    )
+    config = health_config(tmp_path, health_check={"path": "/ping"})
+
+    assert main.main(["--config", config, "health"]) == 0
+    assert "HEALTHY" in capsys.readouterr().out
+
+
+def test_health_exits_3_when_down(tmp_path, capsys, monkeypatch):
+    """A non-zero exit is what stops a CI job from running the suite anyway."""
+    monkeypatch.setattr(
+        main.ApiClient,
+        "health_check",
+        lambda self: HealthResult(ok=False, reason="/ping returned 503"),
+    )
+    config = health_config(tmp_path, health_check={"path": "/ping"})
+
+    assert main.main(["--config", config, "health"]) == 3
+    assert "UNHEALTHY" in capsys.readouterr().out
+
+
+def test_health_exits_0_and_says_so_when_not_configured(tmp_path, capsys):
+    assert main.main(["--config", health_config(tmp_path), "health"]) == 0
+    out = capsys.readouterr().out
+    assert "SKIPPED" in out
+    assert "health_check.path" in out
+
+
+def test_health_on_production_config_exits_2(tmp_path, capsys):
+    """RULE 1 outranks the health check: never call a production host at all."""
+    config = health_config(
+        tmp_path,
+        base_url="https://api.example.com",
+        health_check={"path": "/ping"},
+    )
+    assert main.main(["--config", config, "health"]) == 2
+    assert "GUARDRAIL" in capsys.readouterr().err
 
 
 def test_production_config_exits_2_and_prints_guardrail(tmp_path, capsys):

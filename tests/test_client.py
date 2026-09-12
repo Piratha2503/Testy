@@ -226,6 +226,92 @@ def test_connection_error_returns_response(monkeypatch):
     assert "ConnectionError" in response.error
 
 
+# --------------------------------------------------------------------------
+# health check
+# --------------------------------------------------------------------------
+
+
+def health_client(monkeypatch, status=None, error=None, **config_overrides):
+    client = ApiClient(base_config(**config_overrides))
+
+    def fake_request(method, url, **kwargs):
+        if error is not None:
+            raise error
+        return _FakeResponse("{}", status=status)
+
+    monkeypatch.setattr(client.session, "request", fake_request)
+    return client
+
+
+def test_health_is_skipped_when_no_path_configured(monkeypatch):
+    result = health_client(monkeypatch, status=200).health_check()
+    assert result.skipped is True
+    assert result.ok is True
+    assert result.response is None
+
+
+def test_health_ok_on_200(monkeypatch):
+    client = health_client(monkeypatch, status=200, health_check={"path": "/ping"})
+    result = client.health_check()
+    assert result.ok is True
+    assert result.skipped is False
+    assert "/ping" in result.reason
+
+
+@pytest.mark.parametrize("status", [200, 204, 301, 399])
+def test_health_ok_below_400(monkeypatch, status):
+    client = health_client(monkeypatch, status=status, health_check={"path": "/ping"})
+    assert client.health_check().ok is True
+
+
+@pytest.mark.parametrize("status", [400, 401, 404, 500, 503])
+def test_health_not_ok_at_400_and_above(monkeypatch, status):
+    """404 and 401 count as unhealthy: the path is one you know returns 200,
+    so anything else means it is misconfigured or auth is broken."""
+    client = health_client(monkeypatch, status=status, health_check={"path": "/ping"})
+    result = client.health_check()
+    assert result.ok is False
+    assert str(status) in result.reason
+
+
+def test_health_not_ok_when_nothing_responds(monkeypatch):
+    client = health_client(
+        monkeypatch, error=requests.Timeout("slow"), health_check={"path": "/ping"}
+    )
+    result = client.health_check()
+    assert result.ok is False
+    assert "no response" in result.reason
+    assert result.response is not None
+
+
+def test_health_sends_the_configured_query(monkeypatch):
+    client = ApiClient(base_config(health_check={"path": "/ping", "query": {"size": 1}}))
+    seen = {}
+
+    def capture(method, url, **kwargs):
+        seen.update(kwargs)
+        return _FakeResponse("{}", status=200)
+
+    monkeypatch.setattr(client.session, "request", capture)
+    client.health_check()
+    assert seen["params"] == {"size": 1}
+
+
+def test_health_path_that_guardrails_refuse_still_raises(monkeypatch):
+    """A refused health path is a config mistake, not a sick API."""
+    client = health_client(
+        monkeypatch, status=200, health_check={"path": "/payment/ping"}
+    )
+    with pytest.raises(GuardrailError, match="blocked pattern"):
+        client.health_check()
+
+
+def test_health_check_must_be_a_mapping(monkeypatch):
+    client = health_client(monkeypatch, status=200, health_check="/ping")
+    with pytest.raises(ConfigError, match="must be a mapping"):
+        client.health_check()
+
+
 def test_redirects_are_not_followed(monkeypatch):
     client = ApiClient(base_config())
     seen = {}
