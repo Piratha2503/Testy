@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**1 / 16 முடிஞ்சது** · Phase 1 — Foundation
+**2 / 16 முடிஞ்சது** · Phase 1 — Foundation
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -182,8 +182,15 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   - `tests/test_swagger.py` — 12 tests pass, `tests/fixtures/mini_spec.yaml`-ல Pet ↔ Category circular ref
   - **DONE WHEN ✅** — `parse_file()` spec-ஐ படிச்சு 3 `Endpoint` objects return பண்ணுது
   - ⚠️ பாக்கி: `allOf` merge இன்னும் இல்ல — session 03-ல real spec மேல பாக்கும்போது சேர்க்கணும்
-- [ ] 02 API client + Guardrails — ⏳ அடுத்தது
-- [ ] 03 Parser real-spec validate
+- [x] **02** API client + Guardrails — *2026-09-12*
+  - `config.yaml` — base_url, `require_host_substring`, auth, timeout, allowed_methods, blocked host/path lists. `config.local.yaml` (gitignored) deep-merge ஆகி override பண்ணும்; `${ENV_VAR}` placeholder expand ஆகும்
+  - `core/client.py` — `ConfigError`, `GuardrailError`, `Response` dataclass, `ApiClient`
+  - Guardrails: staging substring check `__init__`-லயே (socket open ஆகற முன்னாடி), third-party host block, method allowlist, `DELETE` hard-block (config-ஆல கூட enable பண்ண முடியாது), blocked path regex, absolute URL refuse, unfilled `{param}` refuse, redirects follow பண்ணல
+  - Response 500 chars-க்கு truncate; timeout / connection error → `status=None` ஓட `Response`, crash இல்ல
+  - `tests/test_client.py` — 27 tests. மொத்தம் **39 pass**
+  - **DONE WHEN ✅** — production host (`api.acme.com`) கொடுத்தா `GuardrailError`, exit code 2. `require_host_substring` காலியா இருந்தாலும் அதே
+  - ⚠️ `base_url` இப்போ `http://localhost:8080` placeholder — session 08-ல real staging value `config.local.yaml`-ல வரணும்
+- [ ] 03 Parser real-spec validate — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

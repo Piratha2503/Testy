@@ -1,0 +1,75 @@
+# API Test Agent — default config.
+#
+# இந்த file git-ல போகுது. Real staging URL, real token — எதுவும் இங்க
+# எழுதக்கூடாது. அவை `config.local.yaml`-ல (gitignored) போகணும்; அந்த file
+# இதோட merge ஆகும், local-ல இருக்கற key வெல்லும்.
+#
+# `${VAR_NAME}` மாதிரி எழுதினா environment variable-ல இருந்து எடுக்கப்படும்.
+
+# ---------------------------------------------------------------------------
+# target
+# ---------------------------------------------------------------------------
+
+# Session 08-ல real staging URL config.local.yaml-ல வரும்.
+base_url: "http://localhost:8080"
+
+# NON-NEGOTIABLE RULE 1. base_url-ஓட host-ல இந்த substring இல்லைன்னா
+# program GuardrailError-ஓட நிக்கும். காலியா / missing ஆ இருந்தாலும் நிக்கும்.
+require_host_substring: "localhost"
+
+# ---------------------------------------------------------------------------
+# auth
+# ---------------------------------------------------------------------------
+
+auth:
+  # none | bearer | header
+  type: "none"
+  # type: bearer  -> Authorization: Bearer <token>
+  token: "${API_TEST_TOKEN}"
+  # type: header  -> ஒரு custom header, உதா: X-API-Key
+  header_name: "X-API-Key"
+
+# ---------------------------------------------------------------------------
+# request behaviour
+# ---------------------------------------------------------------------------
+
+timeout: 10            # seconds, connect + read
+verify_tls: true
+max_response_chars: 500  # இதுக்கு மேல response body truncate ஆகும்
+
+default_headers:
+  Accept: "application/json"
+
+# ---------------------------------------------------------------------------
+# guardrails
+# ---------------------------------------------------------------------------
+
+# Session 10-ல POST சேர்க்கலாம். அது வரைக்கும் read-only மட்டும்.
+allowed_methods:
+  - GET
+  - HEAD
+  - OPTIONS
+
+# NON-NEGOTIABLE RULE 2 — third-party APIs. Host-ல இதுல ஏதாவது ஒன்னு
+# இருந்தா அந்த request நிக்கும்.
+blocked_host_substrings:
+  - stripe
+  - amadeus
+  - ypsilon
+  - webbeds
+  - paypal
+  - razorpay
+  - twilio
+  - sendgrid
+  - googleapis
+  - amazonaws
+
+# Staging-ல கூட தொடக்கூடாத paths. Python regex, case-insensitive,
+# resolved path மேல search பண்ணப்படும்.
+blocked_path_patterns:
+  - "/payment"
+  - "/checkout"
+  - "/refund"
+  - "/webhook"
+  - "/admin"
+  - "/internal"

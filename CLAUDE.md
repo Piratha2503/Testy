@@ -32,7 +32,7 @@ Session 03-க்கு அப்புறம் `main.py` வரும் — �
 
 ```
 core/swagger.py     OpenAPI 3 parser — $ref resolve, circular guard, Endpoint dataclass
-core/client.py      (S02) HTTP client + guardrails
+core/client.py      HTTP client + guardrails - config load, staging check, method allowlist
 core/executor.py    (S05) testcase replay loop
 core/reporter.py    (S07) CSV output
 core/generator.py   (S11) anthropic SDK — test case generation
@@ -40,7 +40,7 @@ main.py             (S03) CLI entry point
 testcases/          test case JSON files (S04 கையால, S13 generated)
 reports/            CSV output — git-ல போகாது
 tests/              pytest + fixtures/mini_spec.yaml (dummy petstore spec)
-config.yaml         (S02) base_url, auth, timeout, allowed_methods
+config.yaml         base_url, require_host_substring, auth, timeout, allowed_methods
 config.local.yaml   real secrets — gitignored
 seed_data.yaml      (S09) real path param values — gitignored
 ```
@@ -74,7 +74,8 @@ seed_data.yaml      (S09) real path param values — gitignored
 
 ## Current status
 
-**Session 01 ✅ complete** — parser working, 12 tests passing.
-**அடுத்தது: Session 02** — `config.yaml` + `core/client.py` + guardrails.
+**Session 01 ✅** — parser working.
+**Session 02 ✅** — `config.yaml` + `core/client.py` + guardrails. 39 tests passing.
+**அடுத்தது: Session 03** — real spec மேல parser validate + `main.py list` command.
 
-Session 02 ஆரம்பிக்க முன்னாடி தெரிய வேண்டியது: staging host-ல எந்த substring guardrail-க்கு use பண்றது (`staging` / `dev` / `localhost` / வேற). தெரியலைன்னா placeholder வெச்சு logic எழுதி, session 08-ல real value போடலாம்.
+⚠️ `config.yaml`-ல `base_url: http://localhost:8080`, `require_host_substring: localhost` — ரெண்டும் placeholder. Session 08-ல real staging value `config.local.yaml`-ல போடணும் (git-ல போகாது).
