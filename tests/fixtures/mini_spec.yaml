@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: Mini Spec
+  version: "1.0"
+paths:
+  /pets:
+    parameters:
+      - name: tenant
+        in: query
+        schema: { type: string }
+    get:
+      operationId: listPets
+      summary: List pets
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer }
+      responses:
+        "200": { description: ok }
+        "400": { description: bad request }
+        default: { description: unexpected }
+    post:
+      operationId: createPet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Pet"
+      responses:
+        "201": { description: created }
+        "422": { description: invalid }
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: ok }
+        "404": { description: missing }
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        category: { $ref: "#/components/schemas/Category" }
+    Category:
+      type: object
+      properties:
+        name: { type: string }
+        pets:
+          type: array
+          items: { $ref: "#/components/schemas/Pet" }
