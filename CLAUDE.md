@@ -71,6 +71,7 @@ seed_data.yaml      (S09) real path param values — gitignored
 - ஒவ்வொரு session-ஓட "DONE WHEN" criteria PLAN.md-ல இருக்கு. அதை நிரூபிச்சு காட்டணும் — "ஆகிடுச்சு" னு சொன்னா போதாது.
 - **Determinism முக்கியம்.** ரெண்டு தடவ run பண்ணா exactly same output வரணும். LLM calls `temperature=0`.
 - Verdict logic-ல precision > recall. சந்தேகம்னா `NEEDS_REVIEW`, `FAIL` இல்ல.
+- **Tool generic-ஆ இருக்கணும்.** ஒரு API-ஓட quirk-க்கு ஏற்ப test format-ஐயோ verdict logic-ஐயோ வளைக்கக்கூடாது. API-specific field (உதா: `validation_Code`, `errorCode`) சேர்க்குறது = அந்த API-க்கான script ஆகிடும். HTTP-ஓட விதியை வைச்சு assert பண்ணணும் — API மீறினா அது finding, tool-ஓட குறை இல்ல.
 
 ## Git
 
@@ -89,5 +90,5 @@ seed_data.yaml      (S09) real path param values — gitignored
 **Session 04-ல எந்த endpoint எடுக்கலாம்:** `GET /api/v1/countries` — path param இல்ல, 4 query params (page/size/sortBy/sortDir), guardrail ok.
 
 ⚠️ **தீர்க்கப்படாத ரெண்டு விஷயம்:**
-1. Spec-ல எல்லா endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு. Session 06 verdict logic அதை நம்பக்கூடாது — இல்லைன்னா ஒவ்வொரு 404-ும் false `FAIL` ஆகும்.
+1. Spec-ல எல்லா endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு — அதனால `documented_codes` verdict-ல எந்த signal-ும் கொடுக்காது, `NEEDS_REVIEW` எந்த case-லும் வராது.
 2. Staging host bare IP + port — bare IP, `staging` substring இல்ல. `require_host_substring` ஆ என்ன வைக்கறது? Session 08-ல முடிவு பண்ணணும். இப்போ `config.yaml`-ல `localhost` placeholder.

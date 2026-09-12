@@ -201,7 +201,9 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   - **DONE WHEN ✅** — `python main.py list` 104 endpoints-ஐ method, path, documented codes ஓட print பண்ணுது
 
   **Findings — sessions 06 / 08 / 10-க்கு:**
-  1. ⚠️ **எல்லா 104 endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு.** 400/401/404 எதுவும் spec-ல இல்ல. Session 06 verdict rule அப்படியே வெச்சா, ஒவ்வொரு 404-ும் `FAIL` ஆகும் — false positive வெள்ளம். Verdict logic-ல "documented codes உபயோகமில்ல" ங்கற case handle பண்ணணும். இது spec-ஓட குறை, tool-ஓட குறை இல்ல — session 10-ல finding ஆ report பண்ணலாம்
+  1. ⚠️ **எல்லா 104 endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு.** 400/401/404 எதுவும் spec-ல இல்ல. Verdict rule-ல `documented_codes`-ஓட ஒரே வேலை — mismatch ஒன்னை `FAIL`-ல இருந்து `NEEDS_REVIEW`-க்கு இறக்கறது. Documented set `{200}` மட்டும்னா அந்த இறக்கம் ஒருநாளும் நடக்காது, எல்லா mismatch-ும் நேரா `FAIL` ஆகும். "சந்தேகம்னா NEEDS_REVIEW" ங்கற precision rule செயலிழக்கும்
+     (expected_status match ஆனா PASS தான் — அதனால சரியான 404-ஐ இது பாதிக்காது. முதல்ல நான் "false FAIL வெள்ளம்" னு எழுதினேன், அது மிகைப்படுத்தல்)
+     இது **spec-ஓட குறை**, tool-ஓட குறை இல்ல — session 10-ல finding ஆ report பண்ணலாம்
   2. ⚠️ Spec-ல `servers[0].url` — **bare IP + port + `/efly`, `staging` ங்கற substring இல்ல**. Session 08-ல `require_host_substring` ஆ என்ன வைக்கறதுன்னு முடிவு பண்ணணும். இது open question. (Real host `config.local.yaml`-ல மட்டும் — RULE 5)
   3. ⚠️ **Booking endpoints** (`/booking/book`, `/booking/cancel`, `/package-bookings`) + `/sync` + `/purge` — supplier-க்கு போகலாம் (RULE 2). இப்போ blocked patterns-ல போட்டாச்சு. 12 booking endpoints-ும் block ஆகுது
   4. `resolve_refs` output 96 KB → 241 KB (2.5x). Session 11-ல `request_schema` LLM-க்கு அனுப்பும்போது token cost-ல தெரியும். அப்போ trim பண்ணணும்
@@ -217,7 +219,11 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   | `/website-slots/99999999` | **500** | `validation_Code: "404"` | ❌ 404 வரணும் |
   | `/api/v1/no-such-thing` | 404 | — | ✅ |
 
-  **A. Validation error-ஐ HTTP 200-ல அனுப்புது.** Error envelope body-க்குள்ள `validation_Code: "40000"` னு இருக்கு. அப்படின்னா **HTTP status மட்டும் வெச்சு verdict முடிவு பண்ண முடியாது** — session 06-ல PLAN-ல இருக்கற rule (status-only) இந்த API-ல வேலை செய்யாது. ஒவ்வொரு invalid-input test case-ும் தப்பா PASS ஆகிடும். `validation_Code` body-ல இருந்து படிக்கணும். இது MVP scope-ஐ கொஞ்சம் மாத்தும் — session 06-ல முடிவு பண்ணணும்
+  **A. Validation error-ஐ HTTP 200-ல அனுப்புது.** Error envelope body-க்குள்ள `validation_Code: "40000"` னு இருக்கு. `?page=-5` க்கு HTTP **400** தான் வரணும் — அது HTTP-ஓட விதி, இந்த API-ஓட விருப்பம் இல்ல. 200 வருது = **FAIL**. அவ்ளோதான்
+
+  > **முடிவு: tool-ல எந்த மாற்றமும் இல்ல.** Test case format `expected_status` ஓட generic-ஆவே இருக்கும். `validation_Code` மாதிரி API-specific field **சேர்க்கக்கூடாது** — அது efly-ஓட envelope convention மட்டும்; அடுத்த API-ல `errorCode` ஆ இருக்கும். ஒவ்வொரு API-க்கும் field சேர்த்தா இது test agent இல்ல, efly script
+  >
+  > API தப்பா இருக்கறதை tool ஏத்துக்கிட்டா, அந்த தப்பு report-ல தெரியவே தெரியாது. Session 06 verdict rule (status-only) அப்படியே இருக்கட்டும் — இந்த FAIL-கள் **உண்மையான findings**, false positive இல்ல
 
   **B. Not-found resource-க்கு HTTP 500 வருது** (`/website-slots/99999999`). Body-ல `"validation_Code": "404"` னு சரியாவே இருக்கு, ஆனா HTTP status 500. Unhandled exception → generic 500 handler. **இது backend bug**, tool-ஓட குறை இல்ல. PLAN-ஓட "5xx எப்பவுமே FAIL" rule இதை சரியா பிடிக்கும்
   > DEFINITION OF DONE-ல இருக்கற *"குறைஞ்சது ஒரு real bug கண்டுபிடிச்சிருக்கும்"* — LLM வரதுக்கு முன்னாடியே, session 03-லயே கிடைச்சுடுச்சு
