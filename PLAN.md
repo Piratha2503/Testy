@@ -205,6 +205,22 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   2. ⚠️ Spec-ல `servers[0].url` — **bare IP + port + `/efly`, `staging` ங்கற substring இல்ல**. Session 08-ல `require_host_substring` ஆ என்ன வைக்கறதுன்னு முடிவு பண்ணணும். இது open question. (Real host `config.local.yaml`-ல மட்டும் — RULE 5)
   3. ⚠️ **Booking endpoints** (`/booking/book`, `/booking/cancel`, `/package-bookings`) + `/sync` + `/purge` — supplier-க்கு போகலாம் (RULE 2). இப்போ blocked patterns-ல போட்டாச்சு. 12 booking endpoints-ும் block ஆகுது
   4. `resolve_refs` output 96 KB → 241 KB (2.5x). Session 11-ல `request_schema` LLM-க்கு அனுப்பும்போது token cost-ல தெரியும். அப்போ trim பண்ணணும்
+
+  **🔴 Session 03-ல `GET /api/v1/website-slots`-ஐ கையால probe பண்ணப்போ கிடைச்சது — ரெண்டும் real findings:**
+
+  | Input | HTTP | Body-ல | சரியா? |
+  |---|---|---|---|
+  | `?sortBy=zzz` | **200** | `validation_Code: 40000` | ❌ 400 வரணும் |
+  | `?page=-5` | **200** | `validation_Code: 40000` | ❌ 400 வரணும் |
+  | `?size=999999` | **200** | `validation_Code: 40000` | ❌ 400 வரணும் |
+  | `?page=abc` | **200** | `validation_Code: 40000` | ❌ 400 வரணும் |
+  | `/website-slots/99999999` | **500** | `validation_Code: "404"` | ❌ 404 வரணும் |
+  | `/api/v1/no-such-thing` | 404 | — | ✅ |
+
+  **A. Validation error-ஐ HTTP 200-ல அனுப்புது.** Error envelope body-க்குள்ள `validation_Code: "40000"` னு இருக்கு. அப்படின்னா **HTTP status மட்டும் வெச்சு verdict முடிவு பண்ண முடியாது** — session 06-ல PLAN-ல இருக்கற rule (status-only) இந்த API-ல வேலை செய்யாது. ஒவ்வொரு invalid-input test case-ும் தப்பா PASS ஆகிடும். `validation_Code` body-ல இருந்து படிக்கணும். இது MVP scope-ஐ கொஞ்சம் மாத்தும் — session 06-ல முடிவு பண்ணணும்
+
+  **B. Not-found resource-க்கு HTTP 500 வருது** (`/website-slots/99999999`). Body-ல `"validation_Code": "404"` னு சரியாவே இருக்கு, ஆனா HTTP status 500. Unhandled exception → generic 500 handler. **இது backend bug**, tool-ஓட குறை இல்ல. PLAN-ஓட "5xx எப்பவுமே FAIL" rule இதை சரியா பிடிக்கும்
+  > DEFINITION OF DONE-ல இருக்கற *"குறைஞ்சது ஒரு real bug கண்டுபிடிச்சிருக்கும்"* — LLM வரதுக்கு முன்னாடியே, session 03-லயே கிடைச்சுடுச்சு
 - [ ] 04 Test case JSON format — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
