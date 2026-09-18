@@ -6,11 +6,14 @@ one is gitignored and would make the suite depend on a machine-local file.
 
 from __future__ import annotations
 
+import json
+import pathlib
+
 import pytest
 import yaml
 
 import main
-from core.client import HealthResult
+from core.client import HealthResult, Response
 
 FIXTURE_SPEC = "tests/fixtures/mini_spec.yaml"
 
@@ -151,6 +154,177 @@ def test_health_on_production_config_exits_2(tmp_path, capsys):
     )
     assert main.main(["--config", config, "health"]) == 2
     assert "GUARDRAIL" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
+# run
+# --------------------------------------------------------------------------
+
+
+@pytest.fixture
+def run_setup(tmp_path):
+    """A config, a testcases dir with two endpoints, and a fake transport."""
+    cases_dir = tmp_path / "testcases"
+    cases_dir.mkdir()
+    for name, path, expected in (
+        ("things", "/api/v1/things", 200),
+        ("widgets", "/api/v1/widgets", 400),
+    ):
+        document = {
+            "endpoint": {"method": "GET", "path": path},
+            "cases": [
+                {
+                    "name": f"{name} case {i}",
+                    "category": "happy_path" if expected == 200 else "invalid_input",
+                    "expected_status": expected,
+                    "reason": "the documented behaviour for this input",
+                }
+                for i in range(2)
+            ],
+        }
+        (cases_dir / f"{name}.json").write_text(json.dumps(document), encoding="utf-8")
+
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        yaml.safe_dump(
+            {
+                "base_url": "https://api.staging.example.com",
+                "require_host_substring": "staging",
+                "allowed_methods": ["GET"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return str(config), str(cases_dir), tmp_path
+
+
+@pytest.fixture
+def always_200(monkeypatch):
+    """A healthy API that answers 200 to everything, so the tests are about
+    the CLI's wiring and exit codes rather than about HTTP."""
+    monkeypatch.setattr(
+        main.ApiClient,
+        "health_check",
+        lambda self: HealthResult(ok=True, reason="/ping returned 200"),
+    )
+    monkeypatch.setattr(
+        main.ApiClient,
+        "request",
+        lambda self, method, path, **kwargs: Response(
+            method=method, url=path, status=200, elapsed_ms=10,
+            body="{}", response_bytes=2,
+        ),
+    )
+
+
+def run_cmd(config, extra):
+    return main.main(["--config", config, "run"] + extra)
+
+
+def test_run_writes_a_csv_and_reports_a_summary(run_setup, always_200, capsys):
+    config, cases_dir, tmp_path = run_setup
+    out = tmp_path / "report.csv"
+
+    code = run_cmd(config, ["--testcases", cases_dir, "--out", str(out)])
+    captured = capsys.readouterr().out
+
+    assert out.is_file()
+    assert "4 cases" in captured
+    assert str(out) in captured
+    # two cases expect 200 and get it; two expect 400 and do not
+    assert "PASS=2" in captured
+    assert code == 4
+
+
+def test_run_exits_4_when_something_failed(run_setup, always_200):
+    config, cases_dir, _ = run_setup
+    assert run_cmd(config, ["--testcases", cases_dir]) == 4
+
+
+def test_run_exits_0_when_nothing_failed(run_setup, always_200, tmp_path):
+    config, cases_dir, _ = run_setup
+    assert run_cmd(config, ["--testcases", cases_dir, "--endpoint", "things"]) == 0
+
+
+def test_endpoint_filter_selects_one_endpoint(run_setup, always_200, capsys):
+    config, cases_dir, _ = run_setup
+    run_cmd(config, ["--testcases", cases_dir, "--endpoint", "widgets"])
+    out = capsys.readouterr().out
+
+    assert "2 cases" in out
+    assert "things case" not in out
+
+
+def test_limit_caps_the_number_of_cases(run_setup, always_200, capsys):
+    config, cases_dir, _ = run_setup
+    run_cmd(config, ["--testcases", cases_dir, "--limit", "1"])
+    assert "1 cases" in capsys.readouterr().out
+
+
+def test_no_matching_cases_is_not_an_error(run_setup, always_200, capsys):
+    config, cases_dir, _ = run_setup
+    assert run_cmd(config, ["--testcases", cases_dir, "--endpoint", "zzz"]) == 0
+    assert "No test cases matched." in capsys.readouterr().out
+
+
+def test_unhealthy_api_exits_3_without_running(run_setup, monkeypatch, capsys):
+    config, cases_dir, _ = run_setup
+    monkeypatch.setattr(
+        main.ApiClient,
+        "health_check",
+        lambda self: HealthResult(ok=False, reason="/ping returned 503"),
+    )
+
+    assert run_cmd(config, ["--testcases", cases_dir]) == 3
+    err = capsys.readouterr().err
+    assert "UNHEALTHY" in err
+    assert "--no-health" in err
+
+
+def test_no_health_flag_runs_anyway(run_setup, always_200, monkeypatch):
+    config, cases_dir, _ = run_setup
+    monkeypatch.setattr(
+        main.ApiClient,
+        "health_check",
+        lambda self: HealthResult(ok=False, reason="down"),
+    )
+    assert run_cmd(config, ["--testcases", cases_dir, "--no-health"]) == 4
+
+
+def test_malformed_testcase_file_exits_1(run_setup, always_200, capsys):
+    config, cases_dir, _ = run_setup
+    (pathlib.Path(cases_dir) / "broken.json").write_text("{not json", encoding="utf-8")
+
+    assert run_cmd(config, ["--testcases", cases_dir]) == 1
+    assert "ERROR" in capsys.readouterr().err
+
+
+def test_run_on_production_config_exits_2(run_setup, always_200, tmp_path, capsys):
+    """RULE 1 again: no request is made at all."""
+    _, cases_dir, _ = run_setup
+    config = tmp_path / "prod.yaml"
+    config.write_text(
+        yaml.safe_dump(
+            {
+                "base_url": "https://api.example.com",
+                "require_host_substring": "staging",
+                "allowed_methods": ["GET"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert run_cmd(str(config), ["--testcases", cases_dir]) == 2
+    assert "GUARDRAIL" in capsys.readouterr().err
+
+
+def test_missing_spec_only_warns(run_setup, always_200, capsys):
+    """Documented codes are optional: their absence can only cost a review."""
+    config, cases_dir, _ = run_setup
+    code = run_cmd(config, ["--testcases", cases_dir, "--spec", "no_such_spec.yaml"])
+
+    assert code == 4
+    assert "WARNING" in capsys.readouterr().err
 
 
 def test_production_config_exits_2_and_prints_guardrail(tmp_path, capsys):

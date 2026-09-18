@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**6 / 16 முடிஞ்சது** · Phase 1 ✅ · Phase 2 — Working tool
+**7 / 16 முடிஞ்சது** · Phase 1 ✅ · Phase 2 — Working tool
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -300,7 +300,32 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   > ⚠️ Session 03-ல நான் "documented codes `{200}` மட்டும்னா NEEDS_REVIEW ஒருநாளும் வராது" னு எழுதினேன். **அது தப்பு.** நேர்மாறா — மிக முக்கியமான case-ல தான் வருது
 
   **முடிவு: rule-ஐ இப்போ மாத்தல.** PLAN சொன்னபடியே implement பண்ணியிருக்கு, behaviour test-ல பதிவாகியிருக்கு. Session 10-ல (`documented codes vs actual behaviour` — அது ஏற்கனவே PLAN-ல இருக்கு) real data வெச்சு முடிவு பண்ணலாம். சாத்தியமான திருத்தம்: ஒரு endpoint-ஓட documented set-ல ஒரே ஒரு code தான் இருந்தா அதை signal ஆ எடுக்கக்கூடாது
-- [ ] 07 CSV reporter + CLI — ⏳ அடுத்தது
+- [x] **07** CSV reporter + CLI wiring — *2026-09-18*
+  - `core/reporter.py` — `write_csv()`, `summary_lines()`, `row_for()`, `format_input()`, `has_failures()`
+  - CSV columns: `endpoint, case, category, input, expected, actual, verdict, outcome, ms, bytes, reason, detail, response`
+  - **ஒவ்வொரு row-ும் தனியா முழுமையானது.** எந்த input அந்த result-ஐ உண்டாக்கியதோ அது அதே row-ல (`query={"size":101}`) — ஒரு finding-ஐ ஒரு வரியில இருந்து reproduce பண்ணலாம். `reason` column-ல ஏன் அந்த status எதிர்பாக்கப்பட்டது, `response` column-ல API என்ன சொல்லுச்சு
+  - `main.py run` — `--all` / `--endpoint` / `--limit` / `--spec` / `--out` / `--testcases` / `--no-health`
+  - **Exit codes:** 0 clean · 1 bad input · 2 guardrail · 3 unhealthy · **4 run முடிஞ்சது, FAIL இருக்கு**. CI-க்கு 4 தான் முக்கியம் — tests fail ஆகும்போது 0 கொடுக்கற tool, tool இல்லாததை விட மோசம்
+  - Health gate `run` command-ல, `run_cases`-க்கு வெளிய — செத்த host, ஓடப்போகாத run-ஐ அறிவிக்கக்கூடாது
+  - Summary-ல FAIL / NEEDS_REVIEW மட்டும் பட்டியலிடுது. Live lines ஏற்கனவே எல்லா case-ஐயும் காட்டியாச்சு; திரும்ப காட்டினா கவனம் தேவைப்படறது புதையும்
+  - `tests/test_reporter.py` (22) + CLI run tests (11). மொத்தம் **188 pass**
+  - **DONE WHEN ✅** — LLM இல்லாம வேலை செய்யற tool:
+    ```
+    5 cases against <staging host>
+
+    RAN           200    159ms     960b  default listing
+    ...
+    5 cases: PASS=2  FAIL=0  NEEDS_REVIEW=3
+
+    NEEDS_REVIEW:
+      GET /api/v1/website-slots  page size one above maximum
+        expected 400, got 200  (invalid_input)
+
+    report: reports\run.csv
+    ```
+  - Exit codes எல்லாம் real host மேல நிரூபிச்சது — production config → **2**, செத்த host → **3**, `/website-slots/99999999` (500 bug) → **4**
+  - ரெண்டு run-ஓட CSV `ms` column தவிர **byte-identical**. `ms` தான் அளவீடு, அது மாறத்தான் செய்யும்
+- [ ] 08 Real staging run ⚑ — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

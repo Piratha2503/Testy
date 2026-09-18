@@ -1,6 +1,6 @@
 """CLI entry point.
 
-Two commands so far.
+Three commands.
 
 ``list`` parses a spec and prints the endpoints it found, saying per endpoint
 whether the guardrails in core.client would let it be called at all -- that is
@@ -9,12 +9,18 @@ the column that matters when picking targets for a real run.
 ``health`` calls one cheap endpoint and exits non-zero if the API is not up,
 so a suite is never run against a dead host.
 
-    python main.py list
-    python main.py list --method GET --runnable
-    python main.py list --grep booking
-    python main.py health
+``run`` replays test cases, judges them, writes a CSV, and exits non-zero if
+anything failed.
 
-``run`` and ``generate`` arrive in sessions 07 and 13.
+    python main.py list --method GET --runnable
+    python main.py health
+    python main.py run
+    python main.py run --endpoint website-slots --limit 5
+
+Exit codes are shared across commands: 0 clean, 1 bad input, 2 guardrail,
+3 API unhealthy, 4 the run finished with failures.
+
+``generate`` arrives in session 13.
 """
 
 from __future__ import annotations
@@ -24,7 +30,12 @@ import sys
 from typing import Any
 
 from core.client import ApiClient, ConfigError, GuardrailError, load_config
+from core.executor import format_result, run_cases
+from core.reporter import DEFAULT_REPORT, has_failures, summary_lines, write_csv
 from core.swagger import Endpoint, SpecError, parse_file
+from core.testcase import TestCaseError, load_dir
+from core.verdict import apply as apply_verdicts
+from core.verdict import codes_by_endpoint
 
 DEFAULT_SPEC = "specs/openapi.json"
 
@@ -171,6 +182,70 @@ def cmd_health(args: argparse.Namespace) -> int:
     return 0 if result.ok else 3
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    """Run test cases against the configured API and write a CSV.
+
+    Exit codes: 0 clean, 1 bad input, 2 guardrail, 3 API unhealthy,
+    4 the run finished and something FAILed. 4 is the one a CI job cares
+    about -- a tool that exits 0 while tests fail is worse than no tool.
+    """
+    config = load_config(args.config) if args.config else load_config()
+    client = ApiClient(config)
+
+    try:
+        cases = load_dir(args.testcases)
+    except TestCaseError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.endpoint:
+        wanted = args.endpoint.strip().lower()
+        cases = [c for c in cases if wanted in c.endpoint_key.lower()]
+    if args.limit is not None:
+        cases = cases[: args.limit]
+
+    if not cases:
+        print("No test cases matched.")
+        return 0
+
+    # The spec is what tells a verdict which statuses the API documents. A
+    # missing spec is not fatal: it only costs NEEDS_REVIEW, never a PASS.
+    documented = {}
+    spec_path = args.spec or config.get("spec_path")
+    if spec_path:
+        try:
+            documented = codes_by_endpoint(parse_file(spec_path))
+        except SpecError as exc:
+            print(f"WARNING: no documented codes -- {exc}\n", file=sys.stderr)
+
+    # Gate here rather than inside run_cases, so a dead host never gets as far
+    # as announcing a run it is not going to do.
+    if not args.no_health:
+        health = client.health_check()
+        if not health.ok:
+            print(f"UNHEALTHY: {health.reason}", file=sys.stderr)
+            print("No cases were run. Use --no-health to run anyway.", file=sys.stderr)
+            return 3
+
+    print(f"{len(cases)} cases against {client.host}\n")
+    results = run_cases(
+        client,
+        cases,
+        on_result=lambda r: print(format_result(r)),
+        check_health=False,
+    )
+
+    apply_verdicts(results, documented)
+
+    report = write_csv(results, args.out or DEFAULT_REPORT)
+    print()
+    for line in summary_lines(results.results):
+        print(line)
+    print(f"\nreport: {report}")
+
+    return 4 if has_failures(results) else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="main.py", description="Swagger-driven API test agent (staging only)."
@@ -191,6 +266,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     health = sub.add_parser("health", help="check the API is up before running a suite")
     health.set_defaults(func=cmd_health)
+
+    runner = sub.add_parser("run", help="run test cases and write a CSV report")
+    runner.add_argument(
+        "--testcases", default="testcases", help="test case directory (default: testcases)"
+    )
+    runner.add_argument(
+        "--endpoint", help="only cases whose endpoint contains this, e.g. website-slots"
+    )
+    runner.add_argument("--limit", type=int, help="run at most this many cases")
+    runner.add_argument("--spec", help="spec file, for documented status codes")
+    runner.add_argument("--out", help=f"CSV path (default: {DEFAULT_REPORT})")
+    runner.add_argument(
+        "--no-health", action="store_true", help="run even if the health check fails"
+    )
+    # --all is the default and exists so the command reads the way PLAN
+    # describes it; passing it changes nothing.
+    runner.add_argument(
+        "--all", action="store_true", help="run every case (the default)"
+    )
+    runner.set_defaults(func=cmd_run)
     return parser
 
 

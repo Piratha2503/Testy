@@ -30,10 +30,14 @@ venv-ஐ activate பண்ணாம, நேரடியா interpreter path-ஐ
 .venv/Scripts/python.exe main.py list --spec specs/efly.json
 .venv/Scripts/python.exe main.py list --method GET --runnable   # guardrails அனுமதிக்கறது மட்டும்
 .venv/Scripts/python.exe main.py list --grep booking
-.venv/Scripts/python.exe main.py health                 # API உயிரோட இருக்கா? exit 0=ஆம் 3=இல்ல
+.venv/Scripts/python.exe main.py health                 # API உயிரோட இருக்கா?
+.venv/Scripts/python.exe main.py run                    # எல்லா cases + CSV report
+.venv/Scripts/python.exe main.py run --endpoint website-slots --limit 5
 ```
 
-`run` (S07) / `generate` (S13) வரும்போது இங்க சேர்க்கணும்.
+Exit codes: **0** clean · **1** bad input · **2** guardrail · **3** API unhealthy · **4** run முடிஞ்சது, FAIL இருக்கு.
+
+`generate` (S13) வரும்போது இங்க சேர்க்கணும்.
 
 ## Layout
 
@@ -43,9 +47,9 @@ core/client.py      HTTP client + guardrails - config load, staging check, metho
 core/testcase.py    test case file format - TestCase dataclass, strict validation
 core/executor.py    replay loop - RAN / SKIPPED / ERROR outcomes, health gate
 core/verdict.py     PASS / FAIL / NEEDS_REVIEW rule - executor-ல இருந்து தனியா
-core/reporter.py    (S07) CSV output
+core/reporter.py    CSV output + run summary
 core/generator.py   (S11) anthropic SDK — test case generation
-main.py             CLI entry point - `list`, `health` (S07-ல `run`, S13-ல `generate`)
+main.py             CLI entry point - `list`, `health`, `run` (S13-ல `generate`)
 testcases/          test case JSON files (S04 கையால, S13 generated)
 reports/            CSV output — git-ல போகாது
 tests/              pytest + fixtures/mini_spec.yaml (dummy petstore spec)
@@ -85,8 +89,8 @@ seed_data.yaml      (S09) real path param values — gitignored
 
 ## Current status
 
-**Phase 1 ✅** · **05 ✅** executor · **06 ✅** verdict logic. **155 tests passing.**
-**அடுத்தது: Session 07** — `core/reporter.py` CSV + `main.py run`. இது முடிஞ்சா **வேலை செய்யற tool**.
+**Phase 2 ✅ முடிஞ்சது** — 05 executor · 06 verdict · 07 CSV + `run`. **LLM இல்லாம வேலை செய்யற tool தயார்.** **188 tests passing.**
+**அடுத்தது: Session 08 ⚑** — real staging மேல முதல் run, CSV-ஐ கண்ணால review.
 
 **Outcome ≠ verdict.** Executor `RAN`/`SKIPPED`/`ERROR` மட்டும் சொல்லும் — request-க்கு என்ன நடந்தது. API சரியா நடந்துச்சான்னு சொல்றது `core/verdict.py`.
 
