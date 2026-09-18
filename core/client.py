@@ -143,6 +143,11 @@ class Response:
     error: str | None = None
     headers: dict[str, str] = field(default_factory=dict)
 
+    # Size of what the server actually sent, measured before truncation.
+    # len(body) answers a different question once max_response_chars bites:
+    # a 2 MB payload and a 501-byte one both leave 500 characters behind.
+    response_bytes: int = 0
+
     @property
     def ok(self) -> bool:
         return self.status is not None and 200 <= self.status < 300
@@ -359,6 +364,9 @@ class ApiClient:
             body=text[: self.max_response_chars],
             truncated=truncated,
             headers=dict(raw.headers),
+            # raw.content is the bytes off the wire; raw.text is decoded, so
+            # it under-counts anything multi-byte.
+            response_bytes=len(raw.content or b""),
         )
 
     # -- health -----------------------------------------------------------

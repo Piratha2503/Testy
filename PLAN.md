@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**4 / 16 முடிஞ்சது** · Phase 1 — Foundation ✅ முடிஞ்சது · அடுத்து Phase 2
+**5 / 16 முடிஞ்சது** · Phase 1 ✅ · Phase 2 — Working tool
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -252,7 +252,27 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   மூணு FAIL-ும் **சரியான FAIL** — API 4xx கொடுக்கணும், 200 கொடுக்குது
 
   **Finding C (புதுசு):** `order=sideways` கொடுத்தா API எந்த complaint-ும் பண்ணல, `validation_Code: 200 SUCCESS` னு normal result திருப்பி அனுப்புது. `sortBy`-ஐ validate பண்றாங்க, `order`-ஐ பண்ணவே இல்ல — அமைதியா ignore. இது A-ஐ விட மோசம்: A-ல குறைஞ்சது body-ல error இருக்கு
-- [ ] 05 Executor — ⏳ அடுத்தது
+- [x] **05** Executor — replay loop — *2026-09-18*
+  - `core/executor.py` — `CaseResult`, `RunResults`, `run_case()`, `run_cases()`, `format_result()`, `UnhealthyApiError`
+  - **மூணு outcome, ரெண்டு இல்ல:** `RAN` (பதில் வந்துச்சு) · `SKIPPED` (guardrail — நாமளே அனுப்பல) · `ERROR` (அனுப்பினோம், பதிலே இல்ல). SKIPPED-ஐயும் ERROR-ஐயும் ஒரே bucket-ல போட்டா "staging down-ஆ இருந்துச்சு" ங்கறது "வேணும்னே block பண்ணோம்" னு படிக்கும்
+  - Outcome ≠ verdict. `404` கூட `RAN` தான் — PASS/FAIL session 06-ல. ரெண்டையும் பிரிச்சு வெச்சா verdict rule மாறும்போது request code-ஐ தொடவேண்டாம்
+  - Loop எந்த endpoint-க்கும் crash ஆகாது. 60-ல 3-வது case-ல செத்துப்போற run, result மாதிரி தெரியும் ஆனா result இல்ல
+  - Health gate — `run_cases(check_health=True)` default. Unhealthy-ன்னா `UnhealthyApiError`, ஒரு case-ும் ஓடாது
+  - `core/client.py` — `Response.response_bytes` சேர்த்தது, **truncate பண்றதுக்கு முன்னாடி** அளக்கப்படுது. `len(body)` 2 MB-க்கும் 501 bytes-க்கும் ஒரே answer கொடுக்கும். `raw.content` (bytes) use பண்றோம், `raw.text` (decoded) இல்ல — multi-byte-ல அது குறைச்சா சொல்லும்
+  - `tests/test_executor.py` (26) + client tests. மொத்தம் **126 pass**
+  - **DONE WHEN ✅** — 5 cases real API மேல ஓடி status print ஆகுது:
+    ```
+    RAN      200    164ms     960b  default listing
+    RAN      200    164ms     956b  page size at documented maximum
+    RAN      200    193ms     130b  page size one above maximum
+    RAN      200    160ms     202b  sortBy column that does not exist
+    RAN      200    166ms     960b  order direction that is not asc or desc
+    5 cases: RAN=5  SKIPPED=0  ERROR=0
+    ```
+  - மூணு outcome-ும் real host மேல நிரூபிச்சது — path block → `SKIPPED=5`, method block → `SKIPPED=5`, செத்த port → `ERROR=5`, செத்த port + health gate → **0 cases run**
+  - Latency-ஐ மறைச்சா ரெண்டு run-ும் byte-identical
+  - ℹ️ `run` CLI command **இல்ல** — அது session 07. இப்போ executor library மட்டும்
+- [ ] 06 Verdict logic — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

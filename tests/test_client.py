@@ -172,6 +172,7 @@ class _FakeElapsed:
 class _FakeResponse:
     def __init__(self, text, status=200):
         self.text = text
+        self.content = text.encode()
         self.status_code = status
         self.headers = {"Content-Type": "application/json"}
         self.elapsed = _FakeElapsed()
@@ -187,6 +188,30 @@ def test_long_response_body_is_truncated(monkeypatch):
     assert len(response.body) == 50
     assert response.truncated is True
     assert response.elapsed_ms == 123
+
+
+def test_response_bytes_is_measured_before_truncation(monkeypatch):
+    """The whole point: len(body) cannot tell 2 MB from 501 bytes."""
+    client = ApiClient(base_config(max_response_chars=50))
+    monkeypatch.setattr(
+        client.session, "request", lambda *a, **kw: _FakeResponse("x" * 5000)
+    )
+
+    response = client.request("GET", "/pets")
+    assert len(response.body) == 50
+    assert response.response_bytes == 5000
+
+
+def test_response_bytes_counts_bytes_not_characters(monkeypatch):
+    """raw.text is decoded, so it under-counts anything multi-byte."""
+    client = ApiClient(base_config())
+    payload = '{"city":"சென்னை"}'
+    monkeypatch.setattr(
+        client.session, "request", lambda *a, **kw: _FakeResponse(payload)
+    )
+
+    response = client.request("GET", "/pets")
+    assert response.response_bytes == len(payload.encode()) > len(payload)
 
 
 def test_short_response_body_is_not_truncated(monkeypatch):
