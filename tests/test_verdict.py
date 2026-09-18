@@ -19,6 +19,7 @@ from core.verdict import (
     codes_by_endpoint,
     counts,
     decide,
+    is_informative,
 )
 
 
@@ -90,7 +91,7 @@ def test_documented_but_not_expected_is_needs_review():
 
 def test_undocumented_mismatch_is_fail():
     result = ran(404, expected_status=200)
-    assert decide(result, documented_codes=[200]) == FAIL
+    assert decide(result, documented_codes=[200, 422]) == FAIL
 
 
 def test_a_404_against_an_expected_200_is_fail_when_undocumented():
@@ -105,18 +106,33 @@ def test_a_404_against_an_expected_200_is_fail_when_undocumented():
 # --------------------------------------------------------------------------
 
 
-def test_invalid_input_accepted_with_200_is_softened_when_200_is_documented():
-    """Worth staring at. This is the finding the tool exists to produce -- bad
-    input, no rejection -- and rule 3 turns it into NEEDS_REVIEW, because the
-    spec lists 200 for this endpoint.
+def test_invalid_input_accepted_with_200_is_a_fail():
+    """The finding this tool exists to produce: bad input, no rejection.
 
-    On a spec that documents 200 and nothing else for every endpoint, that
-    means every real finding lands in NEEDS_REVIEW while ambiguous 404s land
-    in FAIL. Recorded as the rule's actual behaviour, not as an endorsement.
+    A lone documented 200 does not soften it. Until session 10 it did, which
+    put every real finding of this shape into NEEDS_REVIEW while ambiguous
+    404s stayed FAIL -- precision running backwards.
     """
-    assert decide(ran(200, expected_status=400), documented_codes=[200]) == NEEDS_REVIEW
-    # With nothing documented, the same result is a FAIL.
+    assert decide(ran(200, expected_status=400), documented_codes=[200]) == FAIL
     assert decide(ran(200, expected_status=400), documented_codes=[]) == FAIL
+
+
+def test_a_lone_documented_code_carries_no_signal():
+    """One documented status is what a generator writes when the author wrote
+    nothing. It is not a claim that the status is the only valid one."""
+    assert decide(ran(404, expected_status=200), documented_codes=[200]) == FAIL
+    assert not is_informative([200])
+    assert not is_informative([])
+    assert not is_informative([200, 200])
+
+
+def test_two_documented_codes_still_soften():
+    """Where the author actually documented something, the valve still works."""
+    assert (
+        decide(ran(404, expected_status=200), documented_codes=[200, 404])
+        == NEEDS_REVIEW
+    )
+    assert is_informative([200, 404])
 
 
 def test_mismatch_with_nothing_documented_is_fail():

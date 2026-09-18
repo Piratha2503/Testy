@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**9 / 16 முடிஞ்சது** · ⚑ checkpoint கடந்தாச்சு · Phase 1 ✅ Phase 2 ✅ · Phase 3 — Reality hardening
+**10 / 16 முடிஞ்சது** · Phase 1 ✅ Phase 2 ✅ Phase 3 ✅ · அடுத்து Phase 4 — LLM layer
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -385,7 +385,27 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   அதாவது அந்த 4-ல exception `@ControllerAdvice`-ஐ **எட்டவே இல்ல**. Client-க்கு ரெண்டு வெவ்வேற error format வருது — parse பண்றது கஷ்டம். அத்தோட internal path வெளிய போகுது
 
   **Determinism-ல ஒரு நுணுக்கம்:** அந்த 4 rows-ஓட `response` column ரெண்டு run-ல வேறுபடுது — Spring-ஓட body-ல timestamp இருக்கு. இது **நம்ம tool-ஓட குறை இல்ல**; verdict, status, input எல்லாம் stable. `response` column server-ஐ அப்படியே பிரதிபலிக்குது, timestamp-ஐ நீக்கறது சாட்சியை திருத்தறது. Diff பண்ணும்போது `verdict` / `actual` மேல பண்ணணும், `response` மேல இல்ல — reporter docstring-ல எழுதியாச்சு
-- [ ] 10 Swagger quirks + POST — ⏳ அடுத்தது
+- [x] **10** Swagger quirks + POST enable — *2026-09-18*
+
+  **Finding E-க்கு முடிவு: rule B.** `core/verdict.py`-ல `is_informative()` — ஒரு endpoint-க்கு spec **ஒரே ஒரு** status மட்டும் document பண்ணியிருந்தா, அது signal இல்ல. `{200}` ங்கறது *"200 மட்டும் தான் செல்லுபடி"* ங்கற கூற்று இல்ல; author ஒன்னும் எழுதாதப்போ springdoc போடற default. இல்லாத ஒரு கூற்றை ஆதாரமா எடுக்கக்கூடாது
+  - 200 + 404 னு ரெண்டு document பண்ணின spec-ல rule 3 **அப்படியே வேலை செய்யும்** — tool generic-ஆவே இருக்கு, இந்த API-க்காக வளைக்கல
+  - விளைவு: 14 நிஜமான findings `NEEDS_REVIEW`-ல இருந்து `FAIL`-க்கு. விலை: இந்த spec-ல `NEEDS_REVIEW` இனி வராது
+
+  **POST enable** (உங்க முடிவு — எல்லா POST-ும்)
+  - `allowed_methods`-ல POST. PUT / PATCH சேர்க்கல — அவை இருக்கற record-ஐ மாத்தும். DELETE hard-blocked
+  - Blocked patterns tighten: `bulk-import`, `/bulk`, `/store/db`. 48 POST-ல **17 block**, 31 callable
+  - ⚠️ **Test cases 12 read-shaped endpoints-க்கு மட்டும்** (`/search/*` 11 + `/hotel-review/fetch`). Create-shaped POST-க்கு cases எழுதல — 31-ல **24-ம் `required` fields declare பண்ணவே இல்ல**, அதனால ஒரு probe body காலி record ஆ சேமிக்கப்படலாம், rerun-ல இன்னொன்னு. அது staging-ல எழுதற முடிவு, scaffold முடிவு இல்ல. வேணும்னா சொல்லுங்க
+  - POST case-ஓட வடிவம்: schema object எதிர்பாக்கும் இடத்துல **JSON array** அனுப்பறது. தெளிவா malformed, எந்த API-ஆ இருந்தாலும் record உருவாக்காது
+
+  - **DONE WHEN ✅** — **70 cases, 44 endpoints**: `PASS=29 FAIL=39 NEEDS_REVIEW=0`, SKIPPED=2. ரெண்டு run-ஓட `ms` + `response` தவிர **identical**
+
+  **🔴 Finding I — POST-உம் அதே கதை:**
+
+  Object எதிர்பாக்கற இடத்துல array அனுப்பினா, 12-ல **7 endpoints HTTP 200** (`validation_Code: "IllegalIO Exception"`), **5 endpoints HTTP 500** (Spring raw error). Finding F + H-ஓட அதே முரண்பாடு, POST பக்கம்
+
+  அத்தோட இந்த endpoints-ல envelope-ஓட fields **தலைகீழா** இருக்கு — `"validation_Code": "IllegalIO Exception"`, `"validation_status": "40000"`. மத்த இடங்கள்ல `validation_Code` எண், `validation_status` வார்த்தை. Client ஒரே மாதிரி parse பண்ண முடியாது
+
+  **மொத்த படம் (70 cases, 44 endpoints):** `200` × 50 · `500` × 16 · `202` × 2 · அனுப்பப்படாதது × 2. **`400` ஒன்னு கூட இல்ல, `404` ஒன்னு கூட இல்ல** — 39 case-ல அவை வரவேண்டியிருந்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

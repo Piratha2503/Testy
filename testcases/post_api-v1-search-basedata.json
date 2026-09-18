@@ -1,0 +1,15 @@
+{
+  "endpoint": {
+    "method": "POST",
+    "path": "/api/v1/search/basedata"
+  },
+  "cases": [
+    {
+      "name": "body is an array, not an object",
+      "category": "invalid_input",
+      "body": [],
+      "expected_status": 400,
+      "reason": "The schema for this endpoint is an object. A JSON array cannot be read as one, so the request is malformed and must be rejected with 4xx."
+    }
+  ]
+}

@@ -19,6 +19,15 @@ a broken test, not a passing one.
 Step 3 is the precision valve. A status the spec documents, but this case did
 not ask for, is a disagreement between spec and case -- someone should look,
 rather than the tool declaring the API broken.
+
+One refinement to step 3, decided in session 10 against 58 real cases. A spec
+that documents exactly one status for an endpoint is not claiming that status
+is the only valid one; generators emit a single 200 when the author wrote
+nothing. Treating that as evidence let the finding this tool exists to produce
+-- invalid input accepted with 200 -- be softened to NEEDS_REVIEW on every
+endpoint, while ambiguous 404s stayed FAIL. So a documented set of one is
+treated as no information at all. A spec that documents 200 and 404 still
+gets the valve, because there the author said something.
 """
 
 from __future__ import annotations
@@ -34,6 +43,15 @@ FAIL = "FAIL"
 NEEDS_REVIEW = "NEEDS_REVIEW"
 
 VERDICTS = (PASS, FAIL, NEEDS_REVIEW)
+
+# Below this, a documented set says nothing a generator would not have written
+# on its own. See the note on step 3 above.
+MIN_DOCUMENTED_CODES = 2
+
+
+def is_informative(documented_codes: Sequence[int]) -> bool:
+    """Whether the spec's documented codes are worth believing for an endpoint."""
+    return len(set(documented_codes)) >= MIN_DOCUMENTED_CODES
 
 
 def decide(result: CaseResult, documented_codes: Sequence[int] = ()) -> str | None:
@@ -51,7 +69,7 @@ def decide(result: CaseResult, documented_codes: Sequence[int] = ()) -> str | No
         return FAIL
     if status == result.case.expected_status:
         return PASS
-    if status in documented_codes:
+    if is_informative(documented_codes) and status in documented_codes:
         return NEEDS_REVIEW
     return FAIL
 

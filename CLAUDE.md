@@ -90,10 +90,10 @@ seed_data.yaml      real path param values — gitignored
 
 ## Current status
 
-**9 / 16 · ⚑ checkpoint கடந்தாச்சு.** Phase 1 ✅ Phase 2 ✅ · 08 real run ✅ · 09 seed data ✅. **188 tests passing.**
-**அடுத்தது: Session 10** — swagger quirks + POST enable. Finding E-க்கு இங்க முடிவு.
+**10 / 16.** Phase 1 ✅ Phase 2 ✅ Phase 3 ✅. **210 tests passing.** LLM இன்னும் தொடல, cost $0.
+**அடுத்தது: Session 11** — `core/generator.py`, anthropic SDK, ஒரு endpoint மட்டும்.
 
-**இப்போதைய run:** 58 cases · 32 endpoints · `PASS=29 FAIL=13 NEEDS_REVIEW=14` · SKIPPED=2.
+**இப்போதைய run:** 70 cases · 44 endpoints · `PASS=29 FAIL=39 NEEDS_REVIEW=0` · SKIPPED=2 · 8 findings.
 
 **Seed:** committed case-ல `"path_params": {"id": "{{seed}}"}`, real value gitignored `seed_data.yaml`-ல. Value இல்லைன்னா case SKIPPED — போலி id அனுப்பி 404 வாங்கறது பொய்யான finding.
 
@@ -107,6 +107,8 @@ seed_data.yaml      real path param values — gitignored
 
 **⚠️ `Accept` header:** `application/json` னு மட்டும் வெச்சா CSV return பண்ற endpoint 406 கொடுக்கும் — **நம்ம தப்பு, API-ஓட இல்ல**. `application/json, text/plain, */*` ஆ இருக்கணும்.
 
-⚠️ **தீர்க்கப்படாத ரெண்டு விஷயம்:**
-1. எல்லா endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு. அதனால verdict rule 3 தலைகீழா வேலை செய்யுது — `expected 400, got 200` (நிஜமான finding) NEEDS_REVIEW ஆகுது, `expected 200, got 404` (seed data குறை) FAIL ஆகுது. PLAN.md finding E பாக்க. Session 10-ல முடிவு.
-2. Staging host bare IP + port — bare IP, `staging` substring இல்ல. `require_host_substring` ஆ என்ன வைக்கறது? Session 08-ல முடிவு பண்ணணும். இப்போ `config.yaml`-ல `localhost` placeholder.
+**Verdict rule (S10-ல முடிவானது):** spec ஒரு endpoint-க்கு **ஒரே ஒரு** status document பண்ணியிருந்தா அது signal இல்ல (`is_informative()`). `{200}` ங்கறது springdoc default, author-ஓட கூற்று இல்ல. ரெண்டு code document பண்ணின spec-ல rule 3 அப்படியே வேலை செய்யும்.
+
+**POST:** `allowed_methods`-ல இருக்கு. ஆனா `testcases/`-ல POST cases **read-shaped endpoints-க்கு மட்டும்** (`/search/*`, `/hotel-review/fetch`) — body-ஆ JSON array அனுப்பி validation சோதிக்குது, record உருவாக்காது.
+⚠️ Create-shaped POST-க்கு (`/campaigns`, `/countries`, `/website-slots`…) cases **இல்ல**: 31-ல 24-ம் `required` fields declare பண்ணல, அதனால probe body காலி record ஆ சேமிக்கப்படலாம். அது தனி முடிவு.
+PUT / PATCH சேர்க்கல — இருக்கற record-ஐ மாத்தும். DELETE hard-blocked.

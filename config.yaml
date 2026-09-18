@@ -68,11 +68,21 @@ health_check:
 # guardrails
 # ---------------------------------------------------------------------------
 
-# Session 10-ல POST சேர்க்கலாம். அது வரைக்கும் read-only மட்டும்.
+# Session 10-ல POST சேர்க்கப்பட்டது.
+#
+# ⚠️ POST இருக்கறதால இந்த API-ல record உருவாக்க முடியும் — `/campaigns`,
+# `/countries`, `/website-slots` எல்லாம் create endpoints. `testcases/`-ல
+# இருக்கற POST cases எல்லாம் வேணும்னே **body இல்லாம** அனுப்புது: validation
+# சோதிக்கப்படும், data உருவாகாது. Create பண்ற case எழுதும் முன்னாடி
+# யோசிக்கணும் — அது rerun-ல duplicate உருவாக்கும், determinism போயிடும்.
+#
+# PUT / PATCH இன்னும் இல்ல: அவை இருக்கற record-ஐ மாத்தும், staging-ல
+# வேற யாராவது use பண்ற data-வை கெடுக்கும். DELETE hard-blocked.
 allowed_methods:
   - GET
   - HEAD
   - OPTIONS
+  - POST
 
 # NON-NEGOTIABLE RULE 2 — third-party APIs. Host-ல இதுல ஏதாவது ஒன்னு
 # இருந்தா அந்த request நிக்கும்.
@@ -109,3 +119,9 @@ blocked_path_patterns:
   - "booking"
   - "/sync"
   - "/purge"
+  # --- session 10, POST enable பண்ணப்போ சேர்த்தது ---
+  # Bulk import ஒரே request-ல நிறைய record எழுதும். Validation சோதிக்க
+  # இது தேவையில்ல, ஆனா தவறுதலா ஓடினா staging-ஐ சுத்தம் பண்றது உங்க வேலை.
+  - "bulk-import"
+  - "/bulk"
+  - "/store/db"
