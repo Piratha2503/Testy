@@ -42,6 +42,7 @@ core/swagger.py     OpenAPI 3 parser — $ref resolve, circular guard, Endpoint 
 core/client.py      HTTP client + guardrails - config load, staging check, method allowlist
 core/testcase.py    test case file format - TestCase dataclass, strict validation
 core/executor.py    replay loop - RAN / SKIPPED / ERROR outcomes, health gate
+core/verdict.py     PASS / FAIL / NEEDS_REVIEW rule - executor-ல இருந்து தனியா
 core/reporter.py    (S07) CSV output
 core/generator.py   (S11) anthropic SDK — test case generation
 main.py             CLI entry point - `list`, `health` (S07-ல `run`, S13-ல `generate`)
@@ -84,15 +85,15 @@ seed_data.yaml      (S09) real path param values — gitignored
 
 ## Current status
 
-**Phase 1 ✅** · **05 ✅** executor (replay loop, 3 outcomes, health gate). **126 tests passing.**
-**அடுத்தது: Session 06** — verdict logic (PASS / FAIL / NEEDS_REVIEW).
+**Phase 1 ✅** · **05 ✅** executor · **06 ✅** verdict logic. **155 tests passing.**
+**அடுத்தது: Session 07** — `core/reporter.py` CSV + `main.py run`. இது முடிஞ்சா **வேலை செய்யற tool**.
 
-**Outcome ≠ verdict.** Executor `RAN`/`SKIPPED`/`ERROR` மட்டும் சொல்லும் — request-க்கு என்ன நடந்தது. API சரியா நடந்துச்சான்னு சொல்ரது session 06.
+**Outcome ≠ verdict.** Executor `RAN`/`SKIPPED`/`ERROR` மட்டும் சொல்லும் — request-க்கு என்ன நடந்தது. API சரியா நடந்துச்சான்னு சொல்றது `core/verdict.py`.
 
 **Real spec:** efly staging, OpenAPI 3.1, 104 endpoints. `specs/efly.json` (gitignored, `/efly/v3/api-docs`-ல இருந்து download). Guardrails 104-ல 32-ஐ மட்டும் allow பண்ணுது.
 
 **Health check:** `config.local.yaml`-ல `health_check.path` = `/api/v1/website-slots` (size=1). 400-க்கு மேல எது வந்தாலும் unhealthy. `run_cases()` இதை default-ஆ கூப்பிடுது — unhealthy-ன்னா `UnhealthyApiError`, ஒரு case-ும் ஓடாது.
 
 ⚠️ **தீர்க்கப்படாத ரெண்டு விஷயம்:**
-1. Spec-ல எல்லா endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு — அதனால `documented_codes` verdict-ல எந்த signal-ும் கொடுக்காது, `NEEDS_REVIEW` எந்த case-லும் வராது.
+1. எல்லா endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு. அதனால verdict rule 3 தலைகீழா வேலை செய்யுது — `expected 400, got 200` (நிஜமான finding) NEEDS_REVIEW ஆகுது, `expected 200, got 404` (seed data குறை) FAIL ஆகுது. PLAN.md finding E பாக்க. Session 10-ல முடிவு.
 2. Staging host bare IP + port — bare IP, `staging` substring இல்ல. `require_host_substring` ஆ என்ன வைக்கறது? Session 08-ல முடிவு பண்ணணும். இப்போ `config.yaml`-ல `localhost` placeholder.

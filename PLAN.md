@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**5 / 16 முடிஞ்சது** · Phase 1 ✅ · Phase 2 — Working tool
+**6 / 16 முடிஞ்சது** · Phase 1 ✅ · Phase 2 — Working tool
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -272,7 +272,35 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   - மூணு outcome-ும் real host மேல நிரூபிச்சது — path block → `SKIPPED=5`, method block → `SKIPPED=5`, செத்த port → `ERROR=5`, செத்த port + health gate → **0 cases run**
   - Latency-ஐ மறைச்சா ரெண்டு run-ும் byte-identical
   - ℹ️ `run` CLI command **இல்ல** — அது session 07. இப்போ executor library மட்டும்
-- [ ] 06 Verdict logic — ⏳ அடுத்தது
+- [x] **06** Verdict logic — *2026-09-18*
+  - `core/verdict.py` — `decide()`, `apply()`, `counts()`, `codes_by_endpoint()`. `CaseResult.verdict` field
+  - PLAN-ல இருக்கற rule **அப்படியே**, order-ஓட சேர்த்து: 5xx → FAIL · expected match → PASS · documented ஆனா expected இல்ல → NEEDS_REVIEW · மத்தது FAIL
+  - 5xx முதல்ல ங்கறது வேணும்னே — case `500` எதிர்பாத்து `500` வந்தாலும் FAIL. Server error ஒருநாளும் சரியான behaviour இல்ல, அதை assert பண்ற case உடைஞ்ச case
+  - `SKIPPED` / `ERROR`-க்கு **verdict இல்ல** (`None`). Call பண்ணாத, இல்ல பதில் வராத case-க்கு PASS-ும் இல்ல FAIL-ும் இல்ல. Report-ல யாரும் செயல்படுத்த முடியாத ஒரு எண்ணை போடக்கூடாது
+  - `tests/test_verdict.py` — 29 tests. மொத்தம் **155 pass**
+  - **DONE WHEN ✅** — 5 cases-க்கும் verdict வருது
+
+  **🔴 Finding E — rule 3 நம்ம எதிர்பார்ப்புக்கு எதிரா வேலை செய்யுது:**
+
+  Real API மேல ஓட்டினா:
+
+  | case | wanted | got | documented codes-ஓட | codes இல்லாம |
+  |---|---|---|---|---|
+  | default listing | 200 | 200 | PASS | PASS |
+  | size at max (100) | 200 | 200 | PASS | PASS |
+  | size 101 | 400 | 200 | **NEEDS_REVIEW** | FAIL |
+  | sortBy தப்பு | 400 | 200 | **NEEDS_REVIEW** | FAIL |
+  | order தப்பு | 400 | 200 | **NEEDS_REVIEW** | FAIL |
+  | | | | `PASS=2 FAIL=0 REVIEW=3` | `PASS=2 FAIL=3 REVIEW=0` |
+
+  Spec எல்லா endpoint-க்கும் `200` document பண்ணியிருக்கு. Case `400` எதிர்பாக்குது, API `200` கொடுக்குது — `200` documented, அதனால rule 3 பிடிச்சு **NEEDS_REVIEW** ஆ மாத்திடுது.
+
+  அதாவது **tool எதுக்காக இருக்கோ அந்த finding-ஏ (invalid input reject ஆகல) `FAIL`-ல இருந்து இறக்கப்படுது.** அதே நேரம் `expected 200 → got 404` (பெரும்பாலும் seed data குறை, session 09-ல சரியாகும்) hard `FAIL` ஆகுது. Precision தலைகீழ்
+
+  > ⚠️ Session 03-ல நான் "documented codes `{200}` மட்டும்னா NEEDS_REVIEW ஒருநாளும் வராது" னு எழுதினேன். **அது தப்பு.** நேர்மாறா — மிக முக்கியமான case-ல தான் வருது
+
+  **முடிவு: rule-ஐ இப்போ மாத்தல.** PLAN சொன்னபடியே implement பண்ணியிருக்கு, behaviour test-ல பதிவாகியிருக்கு. Session 10-ல (`documented codes vs actual behaviour` — அது ஏற்கனவே PLAN-ல இருக்கு) real data வெச்சு முடிவு பண்ணலாம். சாத்தியமான திருத்தம்: ஒரு endpoint-ஓட documented set-ல ஒரே ஒரு code தான் இருந்தா அதை signal ஆ எடுக்கக்கூடாது
+- [ ] 07 CSV reporter + CLI — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

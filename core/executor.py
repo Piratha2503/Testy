@@ -49,6 +49,10 @@ class CaseResult:
     truncated: bool = False
     detail: str = ""  # why it was skipped, or what the transport said
 
+    # Filled in by core.verdict.apply(). None means there was nothing to
+    # judge: a call that was never made, or never answered.
+    verdict: str | None = None
+
     @property
     def name(self) -> str:
         return self.case.name
@@ -140,8 +144,11 @@ def run_cases(
 def format_result(result: CaseResult) -> str:
     """One ASCII line per case, for a terminal that may be a Windows console."""
     status = str(result.status) if result.status is not None else "-"
+    # Before verdicts are applied, and for skipped or errored cases, the
+    # outcome is all there is to show.
+    label = result.verdict or result.outcome
     line = (
-        f"{result.outcome:7} {status:>4} {result.elapsed_ms:>6}ms "
+        f"{label:12} {status:>4} {result.elapsed_ms:>6}ms "
         f"{result.response_bytes:>7}b  {result.case.name}"
     )
     if result.detail:
