@@ -89,14 +89,20 @@ seed_data.yaml      (S09) real path param values — gitignored
 
 ## Current status
 
-**Phase 2 ✅ முடிஞ்சது** — 05 executor · 06 verdict · 07 CSV + `run`. **LLM இல்லாம வேலை செய்யற tool தயார்.** **188 tests passing.**
-**அடுத்தது: Session 08 ⚑** — real staging மேல முதல் run, CSV-ஐ கண்ணால review.
+**8 / 16 · ⚑ checkpoint கடந்தாச்சு.** Phase 1 ✅ Phase 2 ✅ · 08 real staging run ✅. **188 tests passing.**
+**அடுத்தது: Session 09** — seed data (path param உள்ள endpoints). Token refresh **தேவையில்ல** — கீழ பாக்க.
+
+**முதல் real run:** 28 cases · 15 endpoints · `PASS=14 FAIL=2 NEEDS_REVIEW=12` · 5.5s · ரெண்டு run identical.
 
 **Outcome ≠ verdict.** Executor `RAN`/`SKIPPED`/`ERROR` மட்டும் சொல்லும் — request-க்கு என்ன நடந்தது. API சரியா நடந்துச்சான்னு சொல்றது `core/verdict.py`.
 
 **Real spec:** efly staging, OpenAPI 3.1, 104 endpoints. `specs/efly.json` (gitignored, `/efly/v3/api-docs`-ல இருந்து download). Guardrails 104-ல 32-ஐ மட்டும் allow பண்ணுது.
 
-**Health check:** `config.local.yaml`-ல `health_check.path` = `/api/v1/website-slots` (size=1). 400-க்கு மேல எது வந்தாலும் unhealthy. `run_cases()` இதை default-ஆ கூப்பிடுது — unhealthy-ன்னா `UnhealthyApiError`, ஒரு case-ும் ஓடாது.
+**Health check:** `config.local.yaml`-ல `health_check.path` = `/api/v1/website-slots` (size=1). 400-க்கு மேல எது வந்தாலும் unhealthy.
+
+**Auth:** இந்த API-ல auth இல்லவே இல்ல — spec-ல `securitySchemes` காலி, எல்லா endpoint-ும் token இல்லாம பதில் சொல்லுது. `auth.type: none`. Session 09-ஓட token refresh இங்க தேவையில்ல.
+
+**⚠️ `Accept` header:** `application/json` னு மட்டும் வெச்சா CSV return பண்ற endpoint 406 கொடுக்கும் — **நம்ம தப்பு, API-ஓட இல்ல**. `application/json, text/plain, */*` ஆ இருக்கணும்.
 
 ⚠️ **தீர்க்கப்படாத ரெண்டு விஷயம்:**
 1. எல்லா endpoint-ும் `200` மட்டும் document பண்ணியிருக்கு. அதனால verdict rule 3 தலைகீழா வேலை செய்யுது — `expected 400, got 200` (நிஜமான finding) NEEDS_REVIEW ஆகுது, `expected 200, got 404` (seed data குறை) FAIL ஆகுது. PLAN.md finding E பாக்க. Session 10-ல முடிவு.

@@ -1,0 +1,15 @@
+{
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/reviews/google"
+  },
+  "cases": [
+    {
+      "name": "default listing",
+      "category": "happy_path",
+      "query": {},
+      "expected_status": 200,
+      "reason": "A GET with no parameters is a valid request; the endpoint should return its data with server defaults."
+    }
+  ]
+}

@@ -40,8 +40,13 @@ timeout: 10            # seconds, connect + read
 verify_tls: true
 max_response_chars: 500  # இதுக்கு மேல response body truncate ஆகும்
 
+# ⚠️ `Accept: application/json` னு மட்டும் வெச்சிருந்தா, CSV / file
+# return பண்ற endpoint `406 Not Acceptable` கொடுக்கும் — அது API-ஓட
+# குறை இல்ல, நம்ம header-ஓட குறை. அப்படி ஒரு false FAIL ஒரு endpoint-ல
+# ஏற்கனவே வந்துச்சு (`/package-category-landmark/export`, text/csv).
+# JSON-க்கு முன்னுரிமை, ஆனா மத்ததையும் ஏத்துக்கணும்.
 default_headers:
-  Accept: "application/json"
+  Accept: "application/json, text/plain, */*"
 
 # ---------------------------------------------------------------------------
 # health check — run ஆரம்பிக்கும் முன்னாடி ஒரு தடவ

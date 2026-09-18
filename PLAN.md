@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**7 / 16 முடிஞ்சது** · Phase 1 ✅ · Phase 2 — Working tool
+**8 / 16 முடிஞ்சது** · ⚑ checkpoint கடந்தாச்சு · Phase 1 ✅ Phase 2 ✅ · அடுத்து Phase 3 — Reality hardening
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -325,7 +325,34 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
     ```
   - Exit codes எல்லாம் real host மேல நிரூபிச்சது — production config → **2**, செத்த host → **3**, `/website-slots/99999999` (500 bug) → **4**
   - ரெண்டு run-ஓட CSV `ms` column தவிர **byte-identical**. `ms` தான் அளவீடு, அது மாறத்தான் செய்யும்
-- [ ] 08 Real staging run ⚑ — ⏳ அடுத்தது
+- [x] **08** Real staging மேல முதல் run ⚑ — *2026-09-18*
+  - **Auth: இல்லவே இல்ல.** Spec-ல `securitySchemes` காலி, top-level `security` இல்ல, எந்த operation-க்கும் security இல்ல. 16 GET endpoints-ஐயும் token இல்லாம கூப்பிட்டு பாத்தேன் — எல்லாமே பதில் சொல்லுது. அதனால `auth.type: none` அப்படியே. **Token refresh (session 09) இந்த API-க்கு தேவையே இல்ல**
+  - `require_host_substring` = staging host-ஓட IP, `config.local.yaml`-ல (gitignored). `staging` ங்கற வார்த்தையை விட இது **இறுக்கமானது** — வேற எந்த host-க்கும் match ஆகாது. இது தான் இறுதி முடிவு
+  - 14 புது test case files scaffold பண்ணது (spec-ல இருந்து, LLM இல்ல) — callable GET endpoints, path param இல்லாதவை. Paging இருக்கறவைக்கு 2 cases (happy + `page=-1`), இல்லாதவைக்கு 1. **மொத்தம் 28 cases, 15 endpoints**
+  - `/api/v1/package-bookings` guardrail-ல block ஆகி scaffold ஆகல — சரி
+  - **DONE WHEN ✅** — real API, real result: `PASS=14  FAIL=2  NEEDS_REVIEW=12`, exit 4, 5.5 வினாடி
+  - ரெண்டு run-ஓட 28 rows-ும் `ms` தவிர **identical**
+
+  **🔧 நம்ம tool-ஓட ஒரு bug — முதல்ல அது:**
+
+  `default_headers: Accept: application/json` னு மட்டும் இருந்துச்சு. `/package-category-landmark/export` **`406 Not Acceptable`** கொடுத்துச்சு — அது `text/csv` திருப்பி அனுப்புது. `Accept: */*` வெச்சா `200`, 53 KB CSV. அதாவது **API சரியா இருந்துச்சு, நம்ம header தான் தப்பு**. இப்படி ஒரு false FAIL report-ல போயிருந்தா, dev நேரத்தை வீணடிச்சிருப்போம். `Accept: application/json, text/plain, */*` ஆ மாத்தியாச்சு
+
+  **🔴 Finding F — 9/9 paging endpoints `page=-1`-ஐ HTTP 200-ல reject பண்ணுது:**
+
+  | endpoint | body-ல |
+  |---|---|
+  | `/campaigns` · `/categories` · `/custom-offers` · `/custom-offers/display` · `/query-types` | `40000` · *"page must not be negative"* |
+  | `/countries` · `/offer-categories` · `/package-offers` | `40000` · *"Page index must not be less than zero"* |
+  | `/reviews` | `40000` · *"Page index must not be less than zero"* |
+
+  ஒன்பதுல ஒன்பதும். இது ஒரு endpoint-ல நடந்த தவறு இல்ல, **முழு application-ஓட pattern**. ரெண்டு வெவ்வேற message இருக்கறதால ரெண்டு வெவ்வேற code path — ஒன்னு custom validation, இன்னொன்னு Spring-ஓட சொந்த `PageRequest` exception — ஆனா ரெண்டுமே 200-ல முடியுது. `@ControllerAdvice`-ல எல்லா exception-ஐயும் 200-ஆ சுருட்டி அனுப்பறாங்கன்னு தோணுது
+
+  **🔴 Finding G — GET-க்கு `202 Accepted`:**
+
+  `/api/v1/convert` (4989 b) · `/api/v1/offer-categories/ids` (167 b). ரெண்டும் data-வை **உடனே** திருப்பி அனுப்புது. `202` ங்கறதுக்கு அர்த்தம் *"ஏத்துக்கிட்டேன், பின்னாடி process பண்றேன், result இப்போ இல்ல"*. Client 202 பாத்து polling ஆரம்பிச்சா, ஏற்கனவே கையில இருக்கற data-க்காக காத்திருக்கும். `200` தான் சரி
+
+  இந்த ரெண்டும் **FAIL** ஆ வந்துச்சு — `202` spec-ல documented இல்ல, அதனால rule 3 அதை மென்மையாக்கல. அதே நேரம் finding F முழுக்க NEEDS_REVIEW ஆ போச்சு. Finding E சொன்னதுக்கு இது நேரடி சான்று
+- [ ] 09 Auth + seed data — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

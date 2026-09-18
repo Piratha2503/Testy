@@ -1,0 +1,24 @@
+{
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/query-types"
+  },
+  "cases": [
+    {
+      "name": "default listing",
+      "category": "happy_path",
+      "query": {},
+      "expected_status": 200,
+      "reason": "A GET with no parameters is a valid request; the endpoint should return its data with server defaults."
+    },
+    {
+      "name": "negative page number",
+      "category": "invalid_input",
+      "query": {
+        "page": -1
+      },
+      "expected_status": 400,
+      "reason": "Page numbers start at zero, so -1 is not a page the caller can ask for. A malformed parameter must be rejected with 4xx rather than quietly ignored."
+    }
+  ]
+}
