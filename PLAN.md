@@ -173,7 +173,7 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
 
 ## Progress
 
-**8 / 16 முடிஞ்சது** · ⚑ checkpoint கடந்தாச்சு · Phase 1 ✅ Phase 2 ✅ · அடுத்து Phase 3 — Reality hardening
+**9 / 16 முடிஞ்சது** · ⚑ checkpoint கடந்தாச்சு · Phase 1 ✅ Phase 2 ✅ · Phase 3 — Reality hardening
 
 - [x] **01** Project setup + Swagger parser — *2026-09-12* · `7d6b655`
   - venv (Python 3.12.3), folder structure, `requirements.txt`, `.gitignore`
@@ -352,7 +352,40 @@ Source: `api_test_agent_16_session_plan.pdf` (இதுவே working copy)
   `/api/v1/convert` (4989 b) · `/api/v1/offer-categories/ids` (167 b). ரெண்டும் data-வை **உடனே** திருப்பி அனுப்புது. `202` ங்கறதுக்கு அர்த்தம் *"ஏத்துக்கிட்டேன், பின்னாடி process பண்றேன், result இப்போ இல்ல"*. Client 202 பாத்து polling ஆரம்பிச்சா, ஏற்கனவே கையில இருக்கற data-க்காக காத்திருக்கும். `200` தான் சரி
 
   இந்த ரெண்டும் **FAIL** ஆ வந்துச்சு — `202` spec-ல documented இல்ல, அதனால rule 3 அதை மென்மையாக்கல. அதே நேரம் finding F முழுக்க NEEDS_REVIEW ஆ போச்சு. Finding E சொன்னதுக்கு இது நேரடி சான்று
-- [ ] 09 Auth + seed data — ⏳ அடுத்தது
+- [x] **09** Seed data (auth தேவையில்ல) — *2026-09-18*
+  - **Token refresh எழுதல.** Session 08-ல நிரூபிச்சபடி இந்த API-ல auth இல்லவே இல்ல. இல்லாத ஒரு problem-க்கு code எழுதறது YAGNI மீறல்
+  - `core/seed.py` — `load_seed()`, `lookup()`, `resolve_path_params()`, `SeedError`
+  - Committed test case-ல `"path_params": {"id": "{{seed}}"}` னு placeholder. Real value gitignored `seed_data.yaml`-ல. Staging reseed ஆனா case-ஐ தொடவேண்டாம், private environment-ஓட உண்மை git-ல போகாது
+  - வேணும்னே literal value எழுதலாம் — `{"id": 99999999}` ஒரு not_found case-ஓட நோக்கமே அதுதான், seed-ல விடுபட்டது இல்ல
+  - Seed value இல்லைன்னா case **`SKIPPED`**, crash இல்ல, போலி id-ம் இல்ல. `/reviews` staging-ல காலி (`totalRecords: 0`) — போலி id அனுப்பி 404 வாங்கி அதை finding ஆ காட்டறது பொய். ரெண்டு cases அப்படி skip ஆகுது, detail-ல காரணத்தோட
+  - Third-party skip list ஏற்கனவே `blocked_path_patterns`-ல (session 03) — `/package-bookings/{id}` scaffold-லயே விலகுது
+  - 17 புது case files. **மொத்தம் 58 cases, 32 endpoints**
+  - **DONE WHEN ✅** — path param உள்ள endpoints ஓடுது, 404 noise இல்ல: `PASS=29 FAIL=13 NEEDS_REVIEW=14`, SKIPPED=2
+
+  **🔧 நம்ம tool-ல ரெண்டு திருத்தம்:**
+
+  1. Summary-ல `SKIPPED=2 (guardrails)` னு எழுதியிருந்தேன் — ஆனா அந்த ரெண்டும் **seed இல்லாததால** skip ஆனவை. Summary காரணத்தை ஊகிக்கக்கூடாது; வாசகரை தப்பான config file-ஐ தேட வைக்கும். இப்போ `(not sent)`, காரணம் detail column-ல
+  2. `/custom-offers/{id}`-க்கு `99999999` னு not_found case எழுதியிருந்தேன். அந்த endpoint **UUID** எதிர்பாக்குது — அது இல்லாத record இல்ல, **தப்பான format**. Case-ஐ ரெண்டா பிரிச்சேன்: well-formed UUID → not_found, bare number → invalid_input. **தப்பான test case ஒரு தப்பான finding-ஐ உண்டாக்கும்**
+
+  **🔴 Finding B விரிவாகுது — 11 endpoints, ஒரே bug:**
+
+  இல்லாத record-க்கு **HTTP 500**. Body-ல `validation_Code: "404"` னு சரியாவே இருக்கு:
+
+  `/campaigns/{id}` · `/categories/{id}` · `/countries/{id}` · `/custom-offers/{id}` · `/custom-offers/{id}/display` · `/hotel-review/single/{id}` · `/offer-categories/{id}` · `/package-offers/{id}` · `/query-types/{id}` · `/reviews/{id}` · `/website-slots/{id}`
+
+  Session 03-ல ஒரு endpoint-ல பாத்தது. இப்போ **11-ல 11**. Service layer `EntityNotFoundException` எறியுது, `@ControllerAdvice` அதை catch பண்ணாம generic 500 handler-க்கு போகுது. Finding F-ஓட (page=-1 → 200) அதே இடத்துல இருக்கற பிரச்சனை — exception mapping
+
+  **Status விநியோகம் (58 cases):** `200` × 43 · `500` × 11 · `202` × 2 · அனுப்பப்படாதது × 2. **404 ஒன்னு கூட இல்ல** — 11 தடவ 404 வரவேண்டிய இடத்துல
+
+  **🔴 Finding H — அந்த 11-ல ரெண்டு வெவ்வேற error shape:**
+
+  - **7** endpoints app-ஓட envelope கொடுக்குது: `{"validation_Code":"404","validation_message":"... not found with id: ..."}`
+  - **4** endpoints **Spring-ஓட raw default error page** கொடுக்குது: `{"timestamp":"...","status":500,"error":"Internal Server Error","path":"/efly/api/v1/countries/99999999"}` — `/countries/{id}`, `/hotel-review/single/{id}`, `/offer-categories/{id}`, `/package-offers/{id}`
+
+  அதாவது அந்த 4-ல exception `@ControllerAdvice`-ஐ **எட்டவே இல்ல**. Client-க்கு ரெண்டு வெவ்வேற error format வருது — parse பண்றது கஷ்டம். அத்தோட internal path வெளிய போகுது
+
+  **Determinism-ல ஒரு நுணுக்கம்:** அந்த 4 rows-ஓட `response` column ரெண்டு run-ல வேறுபடுது — Spring-ஓட body-ல timestamp இருக்கு. இது **நம்ம tool-ஓட குறை இல்ல**; verdict, status, input எல்லாம் stable. `response` column server-ஐ அப்படியே பிரதிபலிக்குது, timestamp-ஐ நீக்கறது சாட்சியை திருத்தறது. Diff பண்ணும்போது `verdict` / `actual` மேல பண்ணணும், `response` மேல இல்ல — reporter docstring-ல எழுதியாச்சு
+- [ ] 10 Swagger quirks + POST — ⏳ அடுத்தது
 - [ ] 04 Test case JSON format
 - [ ] 05 Executor
 - [ ] 06 Verdict logic

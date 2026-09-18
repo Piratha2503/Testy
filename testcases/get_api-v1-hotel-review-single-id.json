@@ -1,0 +1,26 @@
+{
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/hotel-review/single/{id}"
+  },
+  "cases": [
+    {
+      "name": "an existing record",
+      "category": "happy_path",
+      "path_params": {
+        "id": "{{seed}}"
+      },
+      "expected_status": 200,
+      "reason": "Fetching a record that exists should return it."
+    },
+    {
+      "name": "an id that does not exist",
+      "category": "not_found",
+      "path_params": {
+        "id": 99999999
+      },
+      "expected_status": 404,
+      "reason": "A well-formed request for a record that is not there is a 404. A server error would mean the miss was unhandled."
+    }
+  ]
+}

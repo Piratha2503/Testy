@@ -16,11 +16,12 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from core.client import ApiClient, GuardrailError, Response
+from core.seed import SeedError, resolve_path_params
 from core.testcase import TestCase
 
 # What happened to the request, not whether the API behaved.
 RAN = "RAN"          # a reply came back, whatever it said
-SKIPPED = "SKIPPED"  # we refused to send it: guardrails
+SKIPPED = "SKIPPED"  # we did not send it: guardrails, or no seed value
 ERROR = "ERROR"      # we sent it and got nothing: timeout, refused, DNS
 
 OUTCOMES = (RAN, SKIPPED, ERROR)
@@ -82,13 +83,22 @@ class RunResults:
         return [r for r in self.results if r.outcome == outcome]
 
 
-def run_case(client: ApiClient, case: TestCase) -> CaseResult:
+def run_case(
+    client: ApiClient, case: TestCase, seed: dict[str, Any] | None = None
+) -> CaseResult:
     """Run one case. Returns a result for every outcome, raises for none."""
+    try:
+        path_params = resolve_path_params(case, seed or {})
+    except SeedError as exc:
+        # No value to put in the URL, so nothing is sent. Sending a made-up id
+        # instead would produce a 404 that says nothing about the API.
+        return CaseResult(case=case, outcome=SKIPPED, detail=str(exc))
+
     try:
         response: Response = client.request(
             case.method,
             case.path,
-            path_params=case.path_params,
+            path_params=path_params,
             query=case.query,
             body=case.body,
         )
@@ -121,6 +131,7 @@ def run_cases(
     cases: list[TestCase],
     on_result: Callable[[CaseResult], Any] | None = None,
     check_health: bool = True,
+    seed: dict[str, Any] | None = None,
 ) -> RunResults:
     """Run every case in order, optionally reporting each as it finishes.
 
@@ -134,7 +145,7 @@ def run_cases(
 
     results = RunResults()
     for case in cases:
-        result = run_case(client, case)
+        result = run_case(client, case, seed)
         results.results.append(result)
         if on_result is not None:
             on_result(result)

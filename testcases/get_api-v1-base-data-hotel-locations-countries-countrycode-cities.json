@@ -1,0 +1,17 @@
+{
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/base-data-hotel/locations/countries/{countryCode}/cities"
+  },
+  "cases": [
+    {
+      "name": "an existing record",
+      "category": "happy_path",
+      "path_params": {
+        "countryCode": "{{seed}}"
+      },
+      "expected_status": 200,
+      "reason": "Fetching a record that exists should return it."
+    }
+  ]
+}

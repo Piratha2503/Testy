@@ -189,6 +189,8 @@ def test_summary_counts_unjudged_separately():
     assert "3 cases: PASS=1" in text
     assert "2 not judged" in text
     assert "SKIPPED=1" in text and "ERROR=1" in text
+    # the summary must not guess *why* it was skipped
+    assert "guardrail" not in text.lower()
 
 
 def test_summary_omits_the_not_judged_line_when_everything_ran():

@@ -10,8 +10,12 @@ Two rules shape it:
   same row as the result, so a finding can be reproduced from one line.
 * Two runs differ only where reality did. Rows keep their file order, dicts
   are serialised with sorted keys, and the file name is fixed rather than
-  timestamped -- so a diff of two reports shows what the API changed. The
-  one column that moves on its own is ``ms``, which is the measurement.
+  timestamped -- so a diff of two reports shows what the API changed.
+
+  Two columns still move on their own. ``ms`` is the measurement. ``response``
+  mirrors the server byte for byte, so if the API puts a timestamp in its
+  error body, that timestamp lands here -- and it should. Stripping it would
+  be editing the evidence. Diff on verdict and actual, not on response.
 """
 
 from __future__ import annotations
@@ -129,9 +133,12 @@ def summary_lines(results: list[CaseResult]) -> list[str]:
 
     not_judged = outcome_counts[SKIPPED] + outcome_counts[ERROR]
     if not_judged:
+        # Do not name a cause here. A case is skipped by a guardrail or by a
+        # missing seed value, and guessing wrong in the summary sends the
+        # reader looking in the wrong config file. The detail column says why.
         lines.append(
             f"{not_judged} not judged: "
-            f"SKIPPED={outcome_counts[SKIPPED]} (guardrails) "
+            f"SKIPPED={outcome_counts[SKIPPED]} (not sent) "
             f"ERROR={outcome_counts[ERROR]} (no response)"
         )
 

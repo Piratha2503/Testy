@@ -32,6 +32,7 @@ from typing import Any
 from core.client import ApiClient, ConfigError, GuardrailError, load_config
 from core.executor import format_result, run_cases
 from core.reporter import DEFAULT_REPORT, has_failures, summary_lines, write_csv
+from core.seed import DEFAULT_SEED_PATH, SeedError, load_seed
 from core.swagger import Endpoint, SpecError, parse_file
 from core.testcase import TestCaseError, load_dir
 from core.verdict import apply as apply_verdicts
@@ -227,12 +228,19 @@ def cmd_run(args: argparse.Namespace) -> int:
             print("No cases were run. Use --no-health to run anyway.", file=sys.stderr)
             return 3
 
+    try:
+        seed = load_seed(args.seed or config.get("seed_data_path") or DEFAULT_SEED_PATH)
+    except SeedError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
     print(f"{len(cases)} cases against {client.host}\n")
     results = run_cases(
         client,
         cases,
         on_result=lambda r: print(format_result(r)),
         check_health=False,
+        seed=seed,
     )
 
     apply_verdicts(results, documented)
@@ -277,6 +285,9 @@ def build_parser() -> argparse.ArgumentParser:
     runner.add_argument("--limit", type=int, help="run at most this many cases")
     runner.add_argument("--spec", help="spec file, for documented status codes")
     runner.add_argument("--out", help=f"CSV path (default: {DEFAULT_REPORT})")
+    runner.add_argument(
+        "--seed", help=f"path param values (default: {DEFAULT_SEED_PATH})"
+    )
     runner.add_argument(
         "--no-health", action="store_true", help="run even if the health check fails"
     )

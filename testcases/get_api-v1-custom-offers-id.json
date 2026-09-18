@@ -1,0 +1,35 @@
+{
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/v1/custom-offers/{id}"
+  },
+  "cases": [
+    {
+      "name": "an existing record",
+      "category": "happy_path",
+      "path_params": {
+        "id": "{{seed}}"
+      },
+      "expected_status": 200,
+      "reason": "Fetching a record that exists should return it."
+    },
+    {
+      "name": "an id that does not exist",
+      "category": "not_found",
+      "path_params": {
+        "id": "00000000-0000-0000-0000-000000000000"
+      },
+      "expected_status": 404,
+      "reason": "A well-formed id that matches no record is a 404. A server error would mean the miss was unhandled."
+    },
+    {
+      "name": "an id that is not a uuid",
+      "category": "invalid_input",
+      "path_params": {
+        "id": 99999999
+      },
+      "expected_status": 400,
+      "reason": "This endpoint keys on a UUID, so a bare number cannot identify anything. Unparseable input is a 400."
+    }
+  ]
+}

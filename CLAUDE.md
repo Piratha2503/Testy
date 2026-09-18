@@ -47,6 +47,7 @@ core/client.py      HTTP client + guardrails - config load, staging check, metho
 core/testcase.py    test case file format - TestCase dataclass, strict validation
 core/executor.py    replay loop - RAN / SKIPPED / ERROR outcomes, health gate
 core/verdict.py     PASS / FAIL / NEEDS_REVIEW rule - executor-ல இருந்து தனியா
+core/seed.py        "{{seed}}" placeholder -> seed_data.yaml-ல real path param values
 core/reporter.py    CSV output + run summary
 core/generator.py   (S11) anthropic SDK — test case generation
 main.py             CLI entry point - `list`, `health`, `run` (S13-ல `generate`)
@@ -56,7 +57,7 @@ tests/              pytest + fixtures/mini_spec.yaml (dummy petstore spec)
 specs/              downloaded OpenAPI specs - gitignored
 config.yaml         base_url, require_host_substring, auth, timeout, allowed_methods
 config.local.yaml   real secrets — gitignored
-seed_data.yaml      (S09) real path param values — gitignored
+seed_data.yaml      real path param values — gitignored
 ```
 
 ## NON-NEGOTIABLE RULES
@@ -89,10 +90,12 @@ seed_data.yaml      (S09) real path param values — gitignored
 
 ## Current status
 
-**8 / 16 · ⚑ checkpoint கடந்தாச்சு.** Phase 1 ✅ Phase 2 ✅ · 08 real staging run ✅. **188 tests passing.**
-**அடுத்தது: Session 09** — seed data (path param உள்ள endpoints). Token refresh **தேவையில்ல** — கீழ பாக்க.
+**9 / 16 · ⚑ checkpoint கடந்தாச்சு.** Phase 1 ✅ Phase 2 ✅ · 08 real run ✅ · 09 seed data ✅. **188 tests passing.**
+**அடுத்தது: Session 10** — swagger quirks + POST enable. Finding E-க்கு இங்க முடிவு.
 
-**முதல் real run:** 28 cases · 15 endpoints · `PASS=14 FAIL=2 NEEDS_REVIEW=12` · 5.5s · ரெண்டு run identical.
+**இப்போதைய run:** 58 cases · 32 endpoints · `PASS=29 FAIL=13 NEEDS_REVIEW=14` · SKIPPED=2.
+
+**Seed:** committed case-ல `"path_params": {"id": "{{seed}}"}`, real value gitignored `seed_data.yaml`-ல. Value இல்லைன்னா case SKIPPED — போலி id அனுப்பி 404 வாங்கறது பொய்யான finding.
 
 **Outcome ≠ verdict.** Executor `RAN`/`SKIPPED`/`ERROR` மட்டும் சொல்லும் — request-க்கு என்ன நடந்தது. API சரியா நடந்துச்சான்னு சொல்றது `core/verdict.py`.
 
